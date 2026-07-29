@@ -18,7 +18,7 @@ and no z/OS dependency.
 | Source size | 2.12 GiB |
 | Copybooks | 3,602 (`copybook/<DOMAIN>/*.cpy`) |
 | JCL jobs | 4,334 (`jcl/*.jcl`) |
-| BMS mapsets | 1,023 (`bms/*.bms`) |
+| BMS mapsets | 1,024 (`bms/*.bms`) |
 | CSD definitions | `cntl/csdvol.txt` (TRANSID → program) |
 | DDL | `ddl/schema.sql` |
 | Ground truth | `manifest.json.gz` (7.7 MiB; ~106 MiB uncompressed) |
@@ -118,6 +118,16 @@ Regenerate without `--fit-window` to get the over-window cases back — the
 ~20,000-line giant and the 1.02× / 1.15× / 1.5× / 2.0× boundary cohort — once a
 fallback path for oversized files exists. The `1.02×` case is the one that
 actually exercises a routing decision.
+
+## BMS
+
+Continued statements carry the `X` continuation character in **column 72**,
+as HLASM requires. Field names avoid assembler instruction mnemonics, except
+in `bms/ZZMNEMON.bms`, whose fields are deliberately named `TITLE`, `START`,
+`END`, `COPY`, `EQU`, `USING`, `SPACE` and `PRINT` — all valid in the name
+field, all mis-read by a lexer that matches keywords by token rather than by
+column position. It is recorded in `injected.bms_mnemonic_collision`, so a
+finding there is real rather than an artifact.
 
 ## Deliberately hostile cases
 
