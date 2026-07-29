@@ -1,0 +1,17 @@
+      ******************************************************************
+      * COPYBOOK ZKBI0042 (record)                                     *
+      ******************************************************************
+               03 ZKBI0042-REC.
+                  05 BILL-AGENT-CODE       PIC 9(8).
+                  05 BILL-BROKER-ID        PIC X(20).
+                  05 BILL-ROOF-TYPE        PIC X(10).
+                  05 BILL-POSTCODE         PIC 9(8).
+                  05 BILL-WITH-PROFITS     PIC S9(7)V99 COMP-3.
+                  05 BILL-BEDROOMS         PIC S9(7)V99 COMP-3.
+                  05 BILL-MODEL            PIC S9(7)V99 COMP-3.
+                  05 BILL-CC-RATING        PIC X(20).
+                  05 BILL-MAKE             PIC 9(8).
+                  05 BILL-PREMIUM          PIC 9(8).
+                  05 BILL-TABLE OCCURS 12 TIMES.
+                     07 TAB-MONTH             PIC 9(2).
+                     07 TAB-AMOUNT            PIC S9(7)V99 COMP-3.
