@@ -86,20 +86,20 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MAKE           PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN01NL3              PIC X(8) VALUE 'ZEN01NL3'.
-       01  MOD-ZEN01RIR              PIC X(8) VALUE 'ZEN01RIR'.
-       01  MOD-ZEN01UCP              PIC X(8) VALUE 'ZEN01UCP'.
-       01  MOD-ZEN01UY3              PIC X(8) VALUE 'ZEN01UY3'.
-       01  MOD-ZEN01M69              PIC X(8) VALUE 'ZEN01M69'.
+       01  MOD-ZAV01TIB              PIC X(8) VALUE 'ZAV01TIB'.
+       01  MOD-ZEN01DTL              PIC X(8) VALUE 'ZEN01DTL'.
+       01  MOD-ZEN01HPV              PIC X(8) VALUE 'ZEN01HPV'.
+       01  MOD-ZEN01CXV              PIC X(8) VALUE 'ZEN01CXV'.
 
       * Dynamically resolved module names
+       01  WS-SUBNAME-2              PIC X(8) VALUE SPACES.
        01  WS-SUBNAME-3              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
@@ -115,12 +115,30 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZEN01NL3-001.
-               PERFORM CALL-ZEN01RIR-002.
-               PERFORM CALL-ZEN01UCP-003.
-               PERFORM CALL-ZEN01DLX-004.
-               PERFORM CALL-ZEN01UY3-005.
-               PERFORM CALL-ZEN01M69-006.
+               PERFORM CALL-ZAV01TIB-001.
+               PERFORM CALL-ZEN01DTL-002.
+               PERFORM CALL-ZLB01JKH-003.
+               PERFORM CALL-ZEN01HPV-004.
+               PERFORM CALL-ZEN01CXV-005.
+               PERFORM CALL-ZEN00MO6-006.
+               PERFORM EXPAND-BROKER-ID-0001.
+               PERFORM DERIVE-ROOF-TYPE-0003.
+               PERFORM COMPUTE-MAKE-0004.
+               PERFORM CHECK-HOUSE-TYPE-0005.
+               PERFORM DERIVE-VALUE-0006.
+               PERFORM DERIVE-COLOUR-0007.
+               PERFORM DERIVE-EQUITIES-0008.
+               PERFORM DERIVE-NCD-YEARS-0009.
+               PERFORM FORMAT-WITH-PROFITS-0010.
+               PERFORM FORMAT-TERM-0011.
+               PERFORM COMPUTE-ROOF-TYPE-0012.
+               PERFORM AUDIT-EXCESS-0013.
+               PERFORM APPLY-WITH-PROFITS-0014.
+               PERFORM DERIVE-BROKER-ID-0016.
+               PERFORM RECONCILE-COLOUR-0017.
+               PERFORM COMPUTE-MANAGED-FUND-0018.
+               PERFORM EXPAND-PREMIUM-0019.
+               PERFORM APPLY-REG-NUMBER-0020.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -133,54 +151,222 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZEN01NL3-001.
-               CALL 'ZEN01NL3' USING DFHCOMMAREA
+       CALL-ZAV01TIB-001.
+               CALL 'ZAV01TIB' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01NL3 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAV01TIB FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01RIR-002.
-               CALL 'ZEN01RIR' USING DFHCOMMAREA
+       CALL-ZEN01DTL-002.
+               CALL 'ZEN01DTL' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01RIR FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01DTL FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01UCP-003.
-               CALL 'ZEN01UCP' USING DFHCOMMAREA
+       CALL-ZLB01JKH-003.
+               MOVE 'ZLB01JKH' TO WS-SUBNAME-2
+               CALL WS-SUBNAME-2 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01UCP FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZLB01JKH FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01DLX-004.
-               MOVE 'ZEN01DLX' TO WS-SUBNAME-3
+       CALL-ZEN01HPV-004.
+               CALL 'ZEN01HPV' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZEN01HPV FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZEN01CXV-005.
+               CALL 'ZEN01CXV' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZEN01CXV FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZEN00MO6-006.
+               MOVE 'ZEN00MO6' TO WS-SUBNAME-3
                CALL WS-SUBNAME-3 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01DLX FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00MO6 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01UY3-005.
-               CALL 'ZEN01UY3' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01UY3 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
+       EXPAND-BROKER-ID-0001.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO BROKER-ID' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01M69-006.
-               CALL 'ZEN01M69' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01M69 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
+       DERIVE-WITH-PROFITS-0002.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       DERIVE-ROOF-TYPE-0003.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       COMPUTE-MAKE-0004.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       CHECK-HOUSE-TYPE-0005.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       DERIVE-VALUE-0006.
+               MOVE 'VALUE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       DERIVE-COLOUR-0007.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       DERIVE-EQUITIES-0008.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-NCD-YEARS-0009.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-WITH-PROFITS-0010.
+               MOVE 'WITH-PROFI' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       FORMAT-TERM-0011.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       COMPUTE-ROOF-TYPE-0012.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       AUDIT-EXCESS-0013.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       APPLY-WITH-PROFITS-0014.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO WITH-PROFITS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
+      *----------------------------------------------------------------*
+       RECONCILE-EXCESS-0015.
+               MOVE 'EXCESS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       DERIVE-BROKER-ID-0016.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       RECONCILE-COLOUR-0017.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       COMPUTE-MANAGED-FUND-0018.
+               MOVE 'MANAGED-FU' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       EXPAND-PREMIUM-0019.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       APPLY-REG-NUMBER-0020.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

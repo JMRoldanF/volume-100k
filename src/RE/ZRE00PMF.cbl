@@ -56,11 +56,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
                 05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
+
+      * Called module names
+       01  MOD-ZMT0255L              PIC X(8) VALUE 'ZMT0255L'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -80,7 +83,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKRE0036.
+               COPY ZKRE0026.
+               COPY ZKRE0028.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -94,38 +98,49 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGRC')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM REFRESH-EQUITIES-0001.
-               PERFORM REFRESH-HOUSE-TYPE-0002.
+               PERFORM FORMAT-SUM-ASSURED-0001.
+               PERFORM EXPAND-COLOUR-0002.
                PERFORM SQL-ACCESS-0003.
-               PERFORM APPLY-STATUS-CODE-0004.
-               PERFORM FORMAT-PREMIUM-0005.
+               PERFORM REFRESH-EXCESS-0004.
+               PERFORM EXPAND-TAX-BAND-0005.
+               PERFORM SQL-ACCESS-0006.
+               PERFORM AUDIT-SUM-ASSURED-0007.
+               PERFORM COMPUTE-SUM-ASSURED-0008.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       REFRESH-EQUITIES-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       REFRESH-HOUSE-TYPE-0002.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO HOUSE-TYPE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
+       CALL-ZMT0255L-001.
+               EXEC CICS LINK PROGRAM('ZMT0255L')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT0255L FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-SUM-ASSURED-0001.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-COLOUR-0002.
+               MOVE 'COLOUR' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
        SQL-ACCESS-0003.
                EXEC SQL
-                     INSERT INTO GENARE.COMMISSION
+                     INSERT INTO GENARE.CONTACT
                             (CUSTOMERNUMBER, POLICYNUMBER,
                              ISSUEDATE, EXPIRYDATE, PAYMENT)
                      VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
@@ -133,23 +148,47 @@
                              :HV-PAYMENT)
                END-EXEC.
       *----------------------------------------------------------------*
-       APPLY-STATUS-CODE-0004.
+       REFRESH-EXCESS-0004.
+               MOVE 'EXCESS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       EXPAND-TAX-BAND-0005.
                INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
                IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       FORMAT-PREMIUM-0005.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
+       SQL-ACCESS-0006.
+               EXEC SQL
+                     UPDATE GENARE.CONTACT
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-SUM-ASSURED-0007.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO SUM-ASSURED' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-SUM-ASSURED-0008.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO SUM-ASSURED' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

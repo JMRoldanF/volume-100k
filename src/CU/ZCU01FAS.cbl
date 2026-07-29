@@ -56,11 +56,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-MAKE           PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
                 05 WS-T-AGENT-CODE     PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
+
+      * Called module names
+       01  MOD-ZMT0255L              PIC X(8) VALUE 'ZMT0255L'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -68,7 +71,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCU0003.
+               COPY ZKCU0007.
+               COPY ZKCU0006.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -82,107 +86,24 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGRC')
+                  EXEC CICS ABEND ABCODE('LGVS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CHECK-BEDROOMS-0002.
-               PERFORM EXPAND-MODEL-0003.
-               PERFORM DERIVE-REG-NUMBER-0004.
-               PERFORM CHECK-PREMIUM-0005.
-               PERFORM RESOLVE-TAX-BAND-0006.
-               PERFORM RESOLVE-VALUE-0007.
-               PERFORM APPLY-ROOF-TYPE-0008.
-               PERFORM EXPAND-PREMIUM-0009.
-               PERFORM FORMAT-AGENT-CODE-0010.
-               PERFORM RESOLVE-POSTCODE-0011.
+               PERFORM CALL-ZMT0255L-001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       APPLY-BEDROOMS-0001.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+       CALL-ZMT0255L-001.
+               EXEC CICS LINK PROGRAM('ZMT0255L')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
                END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       CHECK-BEDROOMS-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       EXPAND-MODEL-0003.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO MODEL' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       DERIVE-REG-NUMBER-0004.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT0255L FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       CHECK-PREMIUM-0005.
-               MOVE 'PREMIUM' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       RESOLVE-TAX-BAND-0006.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       RESOLVE-VALUE-0007.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO VALUE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       APPLY-ROOF-TYPE-0008.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-PREMIUM-0009.
-               MOVE 'PREMIUM' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       FORMAT-AGENT-CODE-0010.
-               MOVE 'AGENT-CODE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       RESOLVE-POSTCODE-0011.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

@@ -56,15 +56,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
-                05 WS-T-TERM           PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZUW01IRO              PIC X(8) VALUE 'ZUW01IRO'.
-       01  MOD-ZUW01N2O              PIC X(8) VALUE 'ZUW01N2O'.
+       01  MOD-ZUW01ORK              PIC X(8) VALUE 'ZUW01ORK'.
+       01  MOD-ZUW01THX              PIC X(8) VALUE 'ZUW01THX'.
+
+      * Dynamically resolved module names
+       01  WS-PROGNAME-3             PIC X(8) VALUE SPACES.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -84,8 +87,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKUW0038.
-               COPY ZKUW0014.
+               COPY ZKUW0041.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -99,28 +101,103 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGRC')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZUW01IRO-001.
-               PERFORM CALL-ZUW01N2O-002.
+               PERFORM CALL-ZUW01ORK-001.
+               PERFORM CALL-ZUW01THX-002.
+               PERFORM CALL-ZBI0255Q-003.
+               PERFORM AUDIT-REG-NUMBER-0001.
+               PERFORM SQL-ACCESS-0003.
+               PERFORM AUDIT-EQUITIES-0004.
+               PERFORM NORMALISE-SUM-ASSURED-0005.
+               PERFORM SQL-ACCESS-0006.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZUW01IRO-001.
-               CALL 'ZUW01IRO' USING DFHCOMMAREA
+       CALL-ZUW01ORK-001.
+               CALL 'ZUW01ORK' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01IRO FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01ORK FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW01N2O-002.
-               CALL 'ZUW01N2O' USING DFHCOMMAREA
+       CALL-ZUW01THX-002.
+               CALL 'ZUW01THX' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01N2O FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01THX FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZBI0255Q-003.
+               MOVE 'ZBI0255Q' TO WS-PROGNAME-3
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-3)
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZBI0255Q FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-REG-NUMBER-0001.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       DERIVE-BROKER-ID-0002.
+               MOVE 'BROKER-ID' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0003.
+               EXEC SQL
+                     UPDATE GENAUW.HISTORY
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-EQUITIES-0004.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       NORMALISE-SUM-ASSURED-0005.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO SUM-ASSURED' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0006.
+               EXEC SQL
+                     UPDATE GENAUW.HISTORY
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

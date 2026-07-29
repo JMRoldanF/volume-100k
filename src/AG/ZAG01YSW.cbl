@@ -86,19 +86,20 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZAG01R8W              PIC X(8) VALUE 'ZAG01R8W'.
-       01  MOD-ZAG01IQ8              PIC X(8) VALUE 'ZAG01IQ8'.
-       01  MOD-ZAG01KB6              PIC X(8) VALUE 'ZAG01KB6'.
-       01  MOD-ZAG01M4Q              PIC X(8) VALUE 'ZAG01M4Q'.
+       01  MOD-ZAG01DCL              PIC X(8) VALUE 'ZAG01DCL'.
+       01  MOD-ZAG01MOH              PIC X(8) VALUE 'ZAG01MOH'.
+       01  MOD-ZAG01SRD              PIC X(8) VALUE 'ZAG01SRD'.
 
       * Dynamically resolved module names
+       01  WS-SUBNAME-4              PIC X(8) VALUE SPACES.
+       01  WS-SUBNAME-5              PIC X(8) VALUE SPACES.
        01  WS-SUBNAME-6              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
@@ -114,11 +115,12 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZAG01R8W-001.
-               PERFORM CALL-ZAG01K02-002.
-               PERFORM CALL-ZAG01IQ8-003.
-               PERFORM CALL-ZAG01KB6-004.
-               PERFORM CALL-ZAG01M4Q-005.
+               PERFORM CALL-ZAG01DCL-001.
+               PERFORM CALL-ZAG01MOH-002.
+               PERFORM CALL-ZAG01SM8-003.
+               PERFORM CALL-ZAG01SRD-004.
+               PERFORM CALL-ZIF01RJM-005.
+               PERFORM CALL-ZAG01D7O-006.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -131,44 +133,54 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZAG01R8W-001.
-               CALL 'ZAG01R8W' USING DFHCOMMAREA
+       CALL-ZAG01DCL-001.
+               CALL 'ZAG01DCL' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01R8W FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01DCL FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01K02-002.
-               MOVE 'ZAG01K02' TO WS-SUBNAME-6
+       CALL-ZAG01MOH-002.
+               CALL 'ZAG01MOH' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZAG01MOH FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZAG01SM8-003.
+               MOVE 'ZAG01SM8' TO WS-SUBNAME-4
+               CALL WS-SUBNAME-4 USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZAG01SM8 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZAG01SRD-004.
+               CALL 'ZAG01SRD' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZAG01SRD FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZIF01RJM-005.
+               MOVE 'ZIF01RJM' TO WS-SUBNAME-5
+               CALL WS-SUBNAME-5 USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZIF01RJM FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZAG01D7O-006.
+               MOVE 'ZAG01D7O' TO WS-SUBNAME-6
                CALL WS-SUBNAME-6 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01K02 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZAG01IQ8-003.
-               CALL 'ZAG01IQ8' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01IQ8 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZAG01KB6-004.
-               CALL 'ZAG01KB6' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01KB6 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZAG01M4Q-005.
-               CALL 'ZAG01M4Q' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01M4Q FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01D7O FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

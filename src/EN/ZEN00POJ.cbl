@@ -56,11 +56,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-STATUS-CODE    PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
+
+      * Called module names
+       01  MOD-ZEN01RB3              PIC X(8) VALUE 'ZEN01RB3'.
+       01  MOD-ZRE0255R              PIC X(8) VALUE 'ZRE0255R'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -80,9 +84,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKEN0033.
-               COPY ZKEN0026.
-               COPY ZKEN0040.
+               COPY ZKEN0048.
+               COPY ZKEN0017.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -96,186 +99,142 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGCA')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM REFRESH-MANAGED-FUND-0001.
-               PERFORM FORMAT-POSTCODE-0002.
+               PERFORM CALL-ZEN01RB3-001.
+               PERFORM CALL-ZRE0255R-002.
+               PERFORM FORMAT-MANAGED-FUND-0001.
+               PERFORM FORMAT-BEDROOMS-0002.
                PERFORM SQL-ACCESS-0003.
-               PERFORM VALIDATE-NCD-YEARS-0004.
-               PERFORM AUDIT-COLOUR-0005.
+               PERFORM RECONCILE-TERM-0004.
+               PERFORM NORMALISE-REG-NUMBER-0005.
                PERFORM SQL-ACCESS-0006.
-               PERFORM NORMALISE-ROOF-TYPE-0008.
-               PERFORM SQL-ACCESS-0009.
-               PERFORM CHECK-TAX-BAND-0010.
-               PERFORM RESOLVE-MAKE-0011.
+               PERFORM NORMALISE-ROOF-TYPE-0007.
+               PERFORM DERIVE-AGENT-CODE-0008.
+               PERFORM EXPAND-TERM-0010.
+               PERFORM NORMALISE-WITH-PROFITS-0011.
                PERFORM SQL-ACCESS-0012.
-               PERFORM EXPAND-NCD-YEARS-0013.
-               PERFORM VALIDATE-STATUS-CODE-0014.
+               PERFORM EXPAND-AGENT-CODE-0013.
+               PERFORM AUDIT-NCD-YEARS-0014.
                PERFORM SQL-ACCESS-0015.
-               PERFORM COMPUTE-WITH-PROFITS-0016.
-               PERFORM VALIDATE-PREMIUM-0017.
+               PERFORM REFRESH-SUM-ASSURED-0016.
                PERFORM SQL-ACCESS-0018.
-               PERFORM EXPAND-VALUE-0019.
-               PERFORM DERIVE-HOUSE-TYPE-0020.
+               PERFORM COMPUTE-EXCESS-0019.
+               PERFORM RECONCILE-EQUITIES-0020.
                PERFORM SQL-ACCESS-0021.
-               PERFORM APPLY-WITH-PROFITS-0022.
-               PERFORM APPLY-PREMIUM-0023.
+               PERFORM CHECK-MAKE-0022.
+               PERFORM CHECK-ROOF-TYPE-0023.
                PERFORM SQL-ACCESS-0024.
-               PERFORM VALIDATE-CC-RATING-0025.
-               PERFORM COMPUTE-PREMIUM-0026.
+               PERFORM AUDIT-PREMIUM-0025.
+               PERFORM VALIDATE-SUM-ASSURED-0026.
                PERFORM SQL-ACCESS-0027.
-               PERFORM RESOLVE-REG-NUMBER-0028.
-               PERFORM RESOLVE-TAX-BAND-0029.
+               PERFORM FORMAT-EQUITIES-0028.
+               PERFORM AUDIT-VALUE-0029.
                PERFORM SQL-ACCESS-0030.
-               PERFORM DERIVE-TERM-0031.
-               PERFORM FORMAT-NCD-YEARS-0032.
+               PERFORM DERIVE-MAKE-0031.
+               PERFORM APPLY-ROOF-TYPE-0032.
                PERFORM SQL-ACCESS-0033.
-               PERFORM NORMALISE-TAX-BAND-0034.
-               PERFORM EXPAND-WITH-PROFITS-0035.
+               PERFORM REFRESH-HOUSE-TYPE-0034.
+               PERFORM CHECK-CC-RATING-0035.
                PERFORM SQL-ACCESS-0036.
-               PERFORM AUDIT-MODEL-0038.
+               PERFORM VALIDATE-REG-NUMBER-0037.
                PERFORM SQL-ACCESS-0039.
-               PERFORM FORMAT-MANAGED-FUND-0040.
+               PERFORM DERIVE-VALUE-0041.
                PERFORM SQL-ACCESS-0042.
-               PERFORM RESOLVE-POSTCODE-0043.
-               PERFORM FORMAT-MAKE-0044.
+               PERFORM COMPUTE-EQUITIES-0044.
                PERFORM SQL-ACCESS-0045.
-               PERFORM RECONCILE-MODEL-0046.
-               PERFORM FORMAT-COLOUR-0047.
+               PERFORM DERIVE-EQUITIES-0046.
+               PERFORM NORMALISE-NCD-YEARS-0047.
                PERFORM SQL-ACCESS-0048.
-               PERFORM AUDIT-BROKER-ID-0049.
-               PERFORM EXPAND-MANAGED-FUND-0050.
+               PERFORM RESOLVE-COLOUR-0049.
+               PERFORM APPLY-CC-RATING-0050.
                PERFORM SQL-ACCESS-0051.
-               PERFORM EXPAND-BROKER-ID-0052.
+               PERFORM REFRESH-AGENT-CODE-0052.
+               PERFORM NORMALISE-MAKE-0053.
                PERFORM SQL-ACCESS-0054.
-               PERFORM RECONCILE-EXCESS-0055.
-               PERFORM CHECK-TAX-BAND-0056.
+               PERFORM RECONCILE-PREMIUM-0055.
+               PERFORM REFRESH-COLOUR-0056.
                PERFORM SQL-ACCESS-0057.
-               PERFORM AUDIT-AGENT-CODE-0058.
-               PERFORM FORMAT-BROKER-ID-0059.
+               PERFORM AUDIT-COLOUR-0058.
+               PERFORM REFRESH-MAKE-0059.
                PERFORM SQL-ACCESS-0060.
-               PERFORM NORMALISE-MANAGED-FUND-0061.
+               PERFORM APPLY-TAX-BAND-0061.
+               PERFORM NORMALISE-AGENT-CODE-0062.
                PERFORM SQL-ACCESS-0063.
-               PERFORM NORMALISE-SUM-ASSURED-0064.
-               PERFORM FORMAT-STATUS-CODE-0065.
+               PERFORM CHECK-CC-RATING-0064.
+               PERFORM APPLY-NCD-YEARS-0065.
                PERFORM SQL-ACCESS-0066.
-               PERFORM CHECK-EXCESS-0067.
+               PERFORM REFRESH-PREMIUM-0067.
+               PERFORM RESOLVE-TAX-BAND-0068.
                PERFORM SQL-ACCESS-0069.
-               PERFORM AUDIT-MANAGED-FUND-0070.
-               PERFORM AUDIT-STATUS-CODE-0071.
-               PERFORM SQL-ACCESS-0072.
-               PERFORM APPLY-STATUS-CODE-0073.
-               PERFORM EXPAND-VALUE-0074.
-               PERFORM SQL-ACCESS-0075.
-               PERFORM CHECK-MAKE-0076.
-               PERFORM RESOLVE-EXCESS-0077.
-               PERFORM SQL-ACCESS-0078.
-               PERFORM APPLY-VALUE-0079.
-               PERFORM SQL-ACCESS-0081.
-               PERFORM VALIDATE-REG-NUMBER-0082.
-               PERFORM DERIVE-EXCESS-0083.
-               PERFORM SQL-ACCESS-0084.
-               PERFORM EXPAND-SUM-ASSURED-0085.
-               PERFORM EXPAND-POSTCODE-0086.
-               PERFORM SQL-ACCESS-0087.
-               PERFORM VALIDATE-SUM-ASSURED-0088.
-               PERFORM CHECK-COLOUR-0089.
-               PERFORM SQL-ACCESS-0090.
-               PERFORM NORMALISE-BEDROOMS-0091.
-               PERFORM RECONCILE-PREMIUM-0092.
-               PERFORM SQL-ACCESS-0093.
-               PERFORM DERIVE-TAX-BAND-0094.
-               PERFORM VALIDATE-BEDROOMS-0095.
-               PERFORM SQL-ACCESS-0096.
-               PERFORM DERIVE-SUM-ASSURED-0097.
-               PERFORM CHECK-AGENT-CODE-0098.
+               PERFORM COMPUTE-CC-RATING-0070.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       REFRESH-MANAGED-FUND-0001.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
+       CALL-ZEN01RB3-001.
+               CALL 'ZEN01RB3' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZEN01RB3 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
-       FORMAT-POSTCODE-0002.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+       CALL-ZRE0255R-002.
+               EXEC CICS LINK PROGRAM('ZRE0255R')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
                END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZRE0255R FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0003.
-               EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAEN.CONTACT
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
-               END-EXEC.
+       FORMAT-MANAGED-FUND-0001.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
-       VALIDATE-NCD-YEARS-0004.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       AUDIT-COLOUR-0005.
+       FORMAT-BEDROOMS-0002.
                IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO COLOUR' TO EM-VARIABLE
+                  MOVE ' NO BEDROOMS' TO EM-VARIABLE
                   MOVE '01' TO WS-STATUS-CODE
                ELSE
                   MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0006.
+       SQL-ACCESS-0003.
                EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAEN.CONTACT
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+                     DECLARE C0003 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAEN.CONTACT A
+                       JOIN GENAEN.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
                END-EXEC.
+               EXEC SQL OPEN C0003 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0003
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0003 END-EXEC.
       *----------------------------------------------------------------*
-       NORMALISE-SUM-ASSURED-0007.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-ROOF-TYPE-0008.
+       RECONCILE-TERM-0004.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 4
+                         + WS-T-AMOUNT(WS-SUB) / 8
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0009.
-               EXEC SQL
-                     UPDATE GENAEN.CONTACT
-                        SET PAYMENT = :HV-PAYMENT,
-                            LASTCHANGED = CURRENT TIMESTAMP
-                      WHERE POLICYNUMBER = :HV-POLICY-NUM
-               END-EXEC.
-               IF SQLCODE NOT = 0
-                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CHECK-TAX-BAND-0010.
+       NORMALISE-REG-NUMBER-0005.
                EVALUATE TRUE
                   WHEN WS-PREMIUM-TOTAL < 999
                        MOVE 1 TO WS-PREMIUM-BAND
@@ -287,11 +246,70 @@
                        MOVE 9 TO WS-PREMIUM-BAND
                END-EVALUATE.
       *----------------------------------------------------------------*
-       RESOLVE-MAKE-0011.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
+       SQL-ACCESS-0006.
+               EXEC SQL
+                     INSERT INTO GENAEN.CONTACT
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-ROOF-TYPE-0007.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 8
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-AGENT-CODE-0008.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0009.
+               EXEC SQL
+                     INSERT INTO GENAEN.CONTACT
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       EXPAND-TERM-0010.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       NORMALISE-WITH-PROFITS-0011.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
       *----------------------------------------------------------------*
        SQL-ACCESS-0012.
                EXEC SQL
@@ -304,364 +322,25 @@
                       WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
                END-EXEC.
       *----------------------------------------------------------------*
-       EXPAND-NCD-YEARS-0013.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
+       EXPAND-AGENT-CODE-0013.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 4
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-STATUS-CODE-0014.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO STATUS-CODE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
+       AUDIT-NCD-YEARS-0014.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 7
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
        SQL-ACCESS-0015.
-               EXEC SQL
-                     DECLARE C0015 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.SCHEDULE A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0015 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0015
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0015 END-EXEC.
-      *----------------------------------------------------------------*
-       COMPUTE-WITH-PROFITS-0016.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       VALIDATE-PREMIUM-0017.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0018.
-               EXEC SQL
-                     DECLARE C0018 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.CONTACT A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0018 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0018
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0018 END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-VALUE-0019.
-               MOVE 'VALUE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       DERIVE-HOUSE-TYPE-0020.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 6
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0021.
-               EXEC SQL
-                     INSERT INTO GENAEN.SCHEDULE
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       APPLY-WITH-PROFITS-0022.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       APPLY-PREMIUM-0023.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0024.
-               EXEC SQL
-                     DECLARE C0024 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.CONTACT A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0024 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0024
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0024 END-EXEC.
-      *----------------------------------------------------------------*
-       VALIDATE-CC-RATING-0025.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       COMPUTE-PREMIUM-0026.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0027.
-               EXEC SQL
-                     DECLARE C0027 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.SCHEDULE A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0027 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0027
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0027 END-EXEC.
-      *----------------------------------------------------------------*
-       RESOLVE-REG-NUMBER-0028.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RESOLVE-TAX-BAND-0029.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0030.
-               EXEC SQL
-                     DECLARE C0030 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.CONTACT A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0030 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0030
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0030 END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-TERM-0031.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 9
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-NCD-YEARS-0032.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO NCD-YEARS' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0033.
-               EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAEN.SCHEDULE
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
-               END-EXEC.
-      *----------------------------------------------------------------*
-       NORMALISE-TAX-BAND-0034.
-               MOVE 'TAX-BAND' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       EXPAND-WITH-PROFITS-0035.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0036.
-               EXEC SQL
-                     INSERT INTO GENAEN.SCHEDULE
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       AUDIT-MAKE-0037.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       AUDIT-MODEL-0038.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 5
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0039.
-               EXEC SQL
-                     UPDATE GENAEN.SCHEDULE
-                        SET PAYMENT = :HV-PAYMENT,
-                            LASTCHANGED = CURRENT TIMESTAMP
-                      WHERE POLICYNUMBER = :HV-POLICY-NUM
-               END-EXEC.
-               IF SQLCODE NOT = 0
-                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-MANAGED-FUND-0040.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       VALIDATE-BROKER-ID-0041.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0042.
-               EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAEN.SCHEDULE
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
-               END-EXEC.
-      *----------------------------------------------------------------*
-       RESOLVE-POSTCODE-0043.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       FORMAT-MAKE-0044.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0045.
-               EXEC SQL
-                     INSERT INTO GENAEN.CONTACT
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       RECONCILE-MODEL-0046.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       FORMAT-COLOUR-0047.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0048.
                EXEC SQL
                      UPDATE GENAEN.CONTACT
                         SET PAYMENT = :HV-PAYMENT,
@@ -673,123 +352,15 @@
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       AUDIT-BROKER-ID-0049.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
+       REFRESH-SUM-ASSURED-0016.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
-       EXPAND-MANAGED-FUND-0050.
-               MOVE 'MANAGED-FU' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0051.
-               EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAEN.SCHEDULE
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
-               END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-BROKER-ID-0052.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-MODEL-0053.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0054.
-               EXEC SQL
-                     DECLARE C0054 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.SCHEDULE A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0054 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0054
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0054 END-EXEC.
-      *----------------------------------------------------------------*
-       RECONCILE-EXCESS-0055.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CHECK-TAX-BAND-0056.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0057.
-               EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAEN.SCHEDULE
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
-               END-EXEC.
-      *----------------------------------------------------------------*
-       AUDIT-AGENT-CODE-0058.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-BROKER-ID-0059.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0060.
-               EXEC SQL
-                     INSERT INTO GENAEN.SCHEDULE
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       NORMALISE-MANAGED-FUND-0061.
+       CHECK-POSTCODE-0017.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
                EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
@@ -797,18 +368,60 @@
                          TIME(TIME1)
                END-EXEC.
       *----------------------------------------------------------------*
-       COMPUTE-HOUSE-TYPE-0062.
+       SQL-ACCESS-0018.
+               EXEC SQL
+                     INSERT INTO GENAEN.CONTACT
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       COMPUTE-EXCESS-0019.
+               MOVE 'EXCESS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       RECONCILE-EQUITIES-0020.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 10
+                         + WS-T-AMOUNT(WS-SUB) / 6
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0063.
+       SQL-ACCESS-0021.
                EXEC SQL
-                     UPDATE GENAEN.SCHEDULE
+                     INSERT INTO GENAEN.CONTACT
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-MAKE-0022.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       CHECK-ROOF-TYPE-0023.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0024.
+               EXEC SQL
+                     UPDATE GENAEN.CONTACT
                         SET PAYMENT = :HV-PAYMENT,
                             LASTCHANGED = CURRENT TIMESTAMP
                       WHERE POLICYNUMBER = :HV-POLICY-NUM
@@ -818,7 +431,43 @@
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       NORMALISE-SUM-ASSURED-0064.
+       AUDIT-PREMIUM-0025.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 8
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       VALIDATE-SUM-ASSURED-0026.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO SUM-ASSURED' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0027.
+               EXEC SQL
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENAEN.CONTACT
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-EQUITIES-0028.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO EQUITIES' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-VALUE-0029.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -827,17 +476,9 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       FORMAT-STATUS-CODE-0065.
-               MOVE 'STATUS-COD' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0066.
+       SQL-ACCESS-0030.
                EXEC SQL
-                     INSERT INTO GENAEN.SCHEDULE
+                     INSERT INTO GENAEN.CONTACT
                             (CUSTOMERNUMBER, POLICYNUMBER,
                              ISSUEDATE, EXPIRYDATE, PAYMENT)
                      VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
@@ -845,19 +486,388 @@
                              :HV-PAYMENT)
                END-EXEC.
       *----------------------------------------------------------------*
-       CHECK-EXCESS-0067.
+       DERIVE-MAKE-0031.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       APPLY-ROOF-TYPE-0032.
+               MOVE 'ROOF-TYPE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0033.
+               EXEC SQL
+                     DECLARE C0033 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAEN.CONTACT A
+                       JOIN GENAEN.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0033 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0033
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0033 END-EXEC.
+      *----------------------------------------------------------------*
+       REFRESH-HOUSE-TYPE-0034.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CHECK-CC-RATING-0035.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0036.
+               EXEC SQL
+                     UPDATE GENAEN.CONTACT
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       VALIDATE-REG-NUMBER-0037.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-CC-RATING-0038.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0039.
+               EXEC SQL
+                     DECLARE C0039 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAEN.CONTACT A
+                       JOIN GENAEN.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0039 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0039
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0039 END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-ROOF-TYPE-0040.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 11
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-VALUE-0041.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0042.
+               EXEC SQL
+                     DECLARE C0042 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAEN.CONTACT A
+                       JOIN GENAEN.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0042 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0042
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0042 END-EXEC.
+      *----------------------------------------------------------------*
+       REFRESH-BEDROOMS-0043.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       COMPUTE-EQUITIES-0044.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0045.
+               EXEC SQL
+                     UPDATE GENAEN.CONTACT
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-EQUITIES-0046.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-NCD-YEARS-0047.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0048.
+               EXEC SQL
+                     DECLARE C0048 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAEN.CONTACT A
+                       JOIN GENAEN.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0048 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0048
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0048 END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-COLOUR-0049.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       APPLY-CC-RATING-0050.
                IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO EXCESS' TO EM-VARIABLE
+                  MOVE ' NO CC-RATING' TO EM-VARIABLE
                   MOVE '01' TO WS-STATUS-CODE
                ELSE
                   MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-HOUSE-TYPE-0068.
+       SQL-ACCESS-0051.
+               EXEC SQL
+                     INSERT INTO GENAEN.CONTACT
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       REFRESH-AGENT-CODE-0052.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       NORMALISE-MAKE-0053.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0054.
+               EXEC SQL
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENAEN.CONTACT
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RECONCILE-PREMIUM-0055.
+               MOVE 'PREMIUM' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       REFRESH-COLOUR-0056.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 4
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0057.
+               EXEC SQL
+                     INSERT INTO GENAEN.CONTACT
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       AUDIT-COLOUR-0058.
                INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
                IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
+      *----------------------------------------------------------------*
+       REFRESH-MAKE-0059.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 9
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0060.
+               EXEC SQL
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENAEN.CONTACT
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       APPLY-TAX-BAND-0061.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       NORMALISE-AGENT-CODE-0062.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0063.
+               EXEC SQL
+                     DECLARE C0063 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAEN.CONTACT A
+                       JOIN GENAEN.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0063 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0063
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0063 END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-CC-RATING-0064.
+               MOVE 'CC-RATING' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       APPLY-NCD-YEARS-0065.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO NCD-YEARS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0066.
+               EXEC SQL
+                     UPDATE GENAEN.CONTACT
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       REFRESH-PREMIUM-0067.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-TAX-BAND-0068.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
        SQL-ACCESS-0069.
                EXEC SQL
@@ -870,292 +880,14 @@
                       WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
                END-EXEC.
       *----------------------------------------------------------------*
-       AUDIT-MANAGED-FUND-0070.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-STATUS-CODE-0071.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0072.
-               EXEC SQL
-                     DECLARE C0072 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.SCHEDULE A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0072 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0072
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0072 END-EXEC.
-      *----------------------------------------------------------------*
-       APPLY-STATUS-CODE-0073.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       EXPAND-VALUE-0074.
-               MOVE 'VALUE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0075.
-               EXEC SQL
-                     INSERT INTO GENAEN.CONTACT
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       CHECK-MAKE-0076.
-               MOVE 'MAKE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       RESOLVE-EXCESS-0077.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0078.
-               EXEC SQL
-                     INSERT INTO GENAEN.CONTACT
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       APPLY-VALUE-0079.
-               MOVE 'VALUE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       VALIDATE-NCD-YEARS-0080.
+       COMPUTE-CC-RATING-0070.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 5
+                         + WS-T-AMOUNT(WS-SUB) / 4
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0081.
-               EXEC SQL
-                     UPDATE GENAEN.CONTACT
-                        SET PAYMENT = :HV-PAYMENT,
-                            LASTCHANGED = CURRENT TIMESTAMP
-                      WHERE POLICYNUMBER = :HV-POLICY-NUM
-               END-EXEC.
-               IF SQLCODE NOT = 0
-                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       VALIDATE-REG-NUMBER-0082.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       DERIVE-EXCESS-0083.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 2
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0084.
-               EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAEN.CONTACT
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
-               END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-SUM-ASSURED-0085.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       EXPAND-POSTCODE-0086.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0087.
-               EXEC SQL
-                     UPDATE GENAEN.CONTACT
-                        SET PAYMENT = :HV-PAYMENT,
-                            LASTCHANGED = CURRENT TIMESTAMP
-                      WHERE POLICYNUMBER = :HV-POLICY-NUM
-               END-EXEC.
-               IF SQLCODE NOT = 0
-                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       VALIDATE-SUM-ASSURED-0088.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       CHECK-COLOUR-0089.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 11
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0090.
-               EXEC SQL
-                     UPDATE GENAEN.CONTACT
-                        SET PAYMENT = :HV-PAYMENT,
-                            LASTCHANGED = CURRENT TIMESTAMP
-                      WHERE POLICYNUMBER = :HV-POLICY-NUM
-               END-EXEC.
-               IF SQLCODE NOT = 0
-                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-BEDROOMS-0091.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RECONCILE-PREMIUM-0092.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO PREMIUM' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0093.
-               EXEC SQL
-                     DECLARE C0093 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAEN.CONTACT A
-                       JOIN GENAEN.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0093 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0093
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0093 END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-TAX-BAND-0094.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       VALIDATE-BEDROOMS-0095.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0096.
-               EXEC SQL
-                     INSERT INTO GENAEN.SCHEDULE
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-SUM-ASSURED-0097.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       CHECK-AGENT-CODE-0098.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

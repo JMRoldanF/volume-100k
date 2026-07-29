@@ -4,6 +4,7 @@
       *
       *  Generated volume-test source. Layer 3,
       *  type subroutine, domain MOTOR.
+      *  Tags: chain
       ******************************************************************
        IDENTIFICATION DIVISION.
        PROGRAM-ID. ZMT01M35.
@@ -56,15 +57,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
                 05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01RUX              PIC X(8) VALUE 'ZMT01RUX'.
-       01  MOD-ZBI0255Q              PIC X(8) VALUE 'ZBI0255Q'.
+       01  MOD-ZMT01NE3              PIC X(8) VALUE 'ZMT01NE3'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -72,8 +72,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0036.
-               COPY ZKMT0007.
+               COPY ZKMT0029.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -92,73 +91,25 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZMT01RUX-001.
-               PERFORM CALL-ZBI0255Q-002.
-               PERFORM NORMALISE-STATUS-CODE-0001.
-               PERFORM EXPAND-BEDROOMS-0002.
-               PERFORM CHECK-AGENT-CODE-0004.
-               PERFORM VALIDATE-TAX-BAND-0005.
+               PERFORM CALL-ZMT01NE3-001.
+               PERFORM FORMAT-AGENT-CODE-0001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZMT01RUX-001.
-               CALL 'ZMT01RUX' USING DFHCOMMAREA
+       CALL-ZMT01NE3-001.
+               CALL 'ZMT01NE3' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01RUX FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01NE3 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI0255Q-002.
-               EXEC CICS LINK PROGRAM('ZBI0255Q')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI0255Q FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-STATUS-CODE-0001.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       EXPAND-BEDROOMS-0002.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       REFRESH-REG-NUMBER-0003.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CHECK-AGENT-CODE-0004.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       VALIDATE-TAX-BAND-0005.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
+       FORMAT-AGENT-CODE-0001.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 10
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

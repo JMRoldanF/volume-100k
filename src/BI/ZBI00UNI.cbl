@@ -56,18 +56,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-BROKER-ID      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZBI01U82              PIC X(8) VALUE 'ZBI01U82'.
-       01  MOD-ZCU0255O              PIC X(8) VALUE 'ZCU0255O'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-3              PIC X(8) VALUE SPACES.
+       01  MOD-ZRE0255R              PIC X(8) VALUE 'ZRE0255R'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -87,9 +83,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKBI0044.
-               COPY ZKBI0038.
-               COPY ZKBI0054.
+               COPY ZKBI0017.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -108,42 +102,63 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZBI01U82-001.
-               PERFORM CALL-ZBI01L72-002.
-               PERFORM CALL-ZCU0255O-003.
-               PERFORM AUDIT-VALUE-0001.
-               PERFORM FORMAT-MAKE-0002.
+               PERFORM CALL-ZRE0255R-001.
+               PERFORM RECONCILE-MAKE-0001.
+               PERFORM RESOLVE-EQUITIES-0002.
+               PERFORM SQL-ACCESS-0003.
+               PERFORM COMPUTE-CC-RATING-0004.
+               PERFORM EXPAND-BROKER-ID-0005.
+               PERFORM SQL-ACCESS-0006.
+               PERFORM DERIVE-REG-NUMBER-0007.
+               PERFORM RECONCILE-TAX-BAND-0008.
+               PERFORM SQL-ACCESS-0009.
+               PERFORM CHECK-WITH-PROFITS-0010.
+               PERFORM FORMAT-AGENT-CODE-0011.
+               PERFORM SQL-ACCESS-0012.
+               PERFORM APPLY-WITH-PROFITS-0013.
+               PERFORM COMPUTE-MANAGED-FUND-0014.
+               PERFORM SQL-ACCESS-0015.
+               PERFORM EXPAND-CC-RATING-0016.
+               PERFORM NORMALISE-CC-RATING-0017.
+               PERFORM SQL-ACCESS-0018.
+               PERFORM VALIDATE-STATUS-CODE-0019.
+               PERFORM SQL-ACCESS-0021.
+               PERFORM RESOLVE-CC-RATING-0022.
+               PERFORM NORMALISE-BEDROOMS-0023.
+               PERFORM SQL-ACCESS-0024.
+               PERFORM EXPAND-ROOF-TYPE-0025.
+               PERFORM DERIVE-MAKE-0026.
+               PERFORM SQL-ACCESS-0027.
+               PERFORM CHECK-CC-RATING-0028.
+               PERFORM CHECK-SUM-ASSURED-0029.
+               PERFORM SQL-ACCESS-0030.
+               PERFORM REFRESH-BEDROOMS-0031.
+               PERFORM APPLY-BEDROOMS-0034.
+               PERFORM RESOLVE-STATUS-CODE-0035.
+               PERFORM SQL-ACCESS-0036.
+               PERFORM FORMAT-EXCESS-0037.
+               PERFORM DERIVE-MODEL-0038.
+               PERFORM SQL-ACCESS-0039.
+               PERFORM RECONCILE-TAX-BAND-0040.
+               PERFORM CHECK-POSTCODE-0041.
+               PERFORM SQL-ACCESS-0042.
+               PERFORM EXPAND-SUM-ASSURED-0043.
+               PERFORM COMPUTE-TERM-0044.
+               PERFORM SQL-ACCESS-0045.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZBI01U82-001.
-               CALL 'ZBI01U82' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01U82 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZBI01L72-002.
-               MOVE 'ZBI01L72' TO WS-SUBNAME-3
-               CALL WS-SUBNAME-3 USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01L72 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCU0255O-003.
-               EXEC CICS LINK PROGRAM('ZCU0255O')
+       CALL-ZRE0255R-001.
+               EXEC CICS LINK PROGRAM('ZRE0255R')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU0255O FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE0255R FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       AUDIT-VALUE-0001.
+       RECONCILE-MAKE-0001.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -152,7 +167,302 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       FORMAT-MAKE-0002.
+       RESOLVE-EQUITIES-0002.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0003.
+               EXEC SQL
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENABI.COMMISSION
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       COMPUTE-CC-RATING-0004.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       EXPAND-BROKER-ID-0005.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0006.
+               EXEC SQL
+                     DECLARE C0006 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENABI.COVER A
+                       JOIN GENABI.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0006 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0006
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0006 END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-REG-NUMBER-0007.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO REG-NUMBER' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       RECONCILE-TAX-BAND-0008.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0009.
+               EXEC SQL
+                     INSERT INTO GENABI.COVER
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-WITH-PROFITS-0010.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       FORMAT-AGENT-CODE-0011.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0012.
+               EXEC SQL
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENABI.COVER
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       APPLY-WITH-PROFITS-0013.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       COMPUTE-MANAGED-FUND-0014.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0015.
+               EXEC SQL
+                     UPDATE GENABI.COMMISSION
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-CC-RATING-0016.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-CC-RATING-0017.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0018.
+               EXEC SQL
+                     UPDATE GENABI.COVER
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       VALIDATE-STATUS-CODE-0019.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       VALIDATE-AGENT-CODE-0020.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0021.
+               EXEC SQL
+                     INSERT INTO GENABI.COMMISSION
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-CC-RATING-0022.
+               MOVE 'CC-RATING' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       NORMALISE-BEDROOMS-0023.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0024.
+               EXEC SQL
+                     UPDATE GENABI.COMMISSION
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-ROOF-TYPE-0025.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 5
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-MAKE-0026.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 5
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0027.
+               EXEC SQL
+                     DECLARE C0027 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENABI.COVER A
+                       JOIN GENABI.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0027 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0027
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0027 END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-CC-RATING-0028.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 11
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       CHECK-SUM-ASSURED-0029.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0030.
+               EXEC SQL
+                     INSERT INTO GENABI.COMMISSION
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       REFRESH-BEDROOMS-0031.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       REFRESH-MANAGED-FUND-0032.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -160,6 +470,143 @@
                      ADD 1 TO WS-ENTRY-COUNT
                   END-IF
                END-PERFORM.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0033.
+               EXEC SQL
+                     DECLARE C0033 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENABI.COMMISSION A
+                       JOIN GENABI.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0033 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0033
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0033 END-EXEC.
+      *----------------------------------------------------------------*
+       APPLY-BEDROOMS-0034.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-STATUS-CODE-0035.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0036.
+               EXEC SQL
+                     INSERT INTO GENABI.COVER
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-EXCESS-0037.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-MODEL-0038.
+               MOVE 'MODEL' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0039.
+               EXEC SQL
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENABI.COMMISSION
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RECONCILE-TAX-BAND-0040.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-POSTCODE-0041.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0042.
+               EXEC SQL
+                     DECLARE C0042 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENABI.COVER A
+                       JOIN GENABI.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0042 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0042
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0042 END-EXEC.
+      *----------------------------------------------------------------*
+       EXPAND-SUM-ASSURED-0043.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       COMPUTE-TERM-0044.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0045.
+               EXEC SQL
+                     UPDATE GENABI.COMMISSION
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
+               END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

@@ -56,14 +56,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
                 05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01FUZ              PIC X(8) VALUE 'ZMT01FUZ'.
+       01  MOD-ZMT01MGZ              PIC X(8) VALUE 'ZMT01MGZ'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -83,8 +83,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0056.
-               COPY ZKMT0007.
+               COPY ZKMT0053.
+               COPY ZKMT0027.
+               COPY ZKMT0051.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -103,104 +104,50 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZMT01FUZ-001.
-               PERFORM APPLY-BROKER-ID-0001.
-               PERFORM FORMAT-EQUITIES-0002.
+               PERFORM CALL-ZMT01MGZ-001.
+               PERFORM APPLY-COLOUR-0001.
+               PERFORM EXPAND-EXCESS-0002.
                PERFORM SQL-ACCESS-0003.
-               PERFORM DERIVE-STATUS-CODE-0004.
+               PERFORM APPLY-PREMIUM-0004.
+               PERFORM AUDIT-TERM-0005.
                PERFORM SQL-ACCESS-0006.
-               PERFORM APPLY-COLOUR-0007.
-               PERFORM REFRESH-VALUE-0008.
+               PERFORM APPLY-EQUITIES-0008.
                PERFORM SQL-ACCESS-0009.
-               PERFORM FORMAT-CC-RATING-0010.
-               PERFORM NORMALISE-STATUS-CODE-0011.
+               PERFORM VALIDATE-WITH-PROFITS-0010.
+               PERFORM AUDIT-WITH-PROFITS-0011.
                PERFORM SQL-ACCESS-0012.
-               PERFORM CHECK-POSTCODE-0014.
+               PERFORM RESOLVE-SUM-ASSURED-0013.
+               PERFORM NORMALISE-COLOUR-0014.
                PERFORM SQL-ACCESS-0015.
-               PERFORM AUDIT-REG-NUMBER-0016.
-               PERFORM AUDIT-MAKE-0017.
+               PERFORM NORMALISE-STATUS-CODE-0016.
+               PERFORM CHECK-ROOF-TYPE-0017.
                PERFORM SQL-ACCESS-0018.
-               PERFORM CHECK-REG-NUMBER-0019.
-               PERFORM FORMAT-ROOF-TYPE-0020.
+               PERFORM AUDIT-TERM-0019.
+               PERFORM EXPAND-POSTCODE-0020.
                PERFORM SQL-ACCESS-0021.
-               PERFORM DERIVE-STATUS-CODE-0022.
-               PERFORM NORMALISE-TAX-BAND-0023.
+               PERFORM NORMALISE-ROOF-TYPE-0022.
+               PERFORM VALIDATE-MAKE-0023.
                PERFORM SQL-ACCESS-0024.
-               PERFORM EXPAND-HOUSE-TYPE-0025.
-               PERFORM COMPUTE-BROKER-ID-0026.
+               PERFORM COMPUTE-MAKE-0026.
                PERFORM SQL-ACCESS-0027.
+               PERFORM VALIDATE-ROOF-TYPE-0028.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZMT01FUZ-001.
-               CALL 'ZMT01FUZ' USING DFHCOMMAREA
+       CALL-ZMT01MGZ-001.
+               CALL 'ZMT01MGZ' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01FUZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01MGZ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       APPLY-BROKER-ID-0001.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
+       APPLY-COLOUR-0001.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
-       FORMAT-EQUITIES-0002.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO EQUITIES' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0003.
-               EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENAMT.SETTLEMENT
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
-               END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-STATUS-CODE-0004.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO STATUS-CODE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-HOUSE-TYPE-0005.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0006.
-               EXEC SQL
-                     INSERT INTO GENAMT.PAYMENT
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       APPLY-COLOUR-0007.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       REFRESH-VALUE-0008.
+       EXPAND-EXCESS-0002.
                EVALUATE TRUE
                   WHEN WS-PREMIUM-TOTAL < 999
                        MOVE 1 TO WS-PREMIUM-BAND
@@ -212,60 +159,17 @@
                        MOVE 9 TO WS-PREMIUM-BAND
                END-EVALUATE.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0009.
+       SQL-ACCESS-0003.
                EXEC SQL
-                     UPDATE GENAMT.SETTLEMENT
-                        SET PAYMENT = :HV-PAYMENT,
-                            LASTCHANGED = CURRENT TIMESTAMP
-                      WHERE POLICYNUMBER = :HV-POLICY-NUM
-               END-EXEC.
-               IF SQLCODE NOT = 0
-                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-CC-RATING-0010.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-STATUS-CODE-0011.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
+                     INSERT INTO GENAMT.COVER
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
                END-EXEC.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0012.
-               EXEC SQL
-                     DECLARE C0012 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAMT.CLAIM A
-                       JOIN GENAMT.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0012 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0012
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0012 END-EXEC.
-      *----------------------------------------------------------------*
-       REFRESH-EQUITIES-0013.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       CHECK-POSTCODE-0014.
+       APPLY-PREMIUM-0004.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -274,9 +178,69 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0015.
+       AUDIT-TERM-0005.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO TERM' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0006.
                EXEC SQL
-                     UPDATE GENAMT.SETTLEMENT
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENAMT.COVER
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       AUDIT-HOUSE-TYPE-0007.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       APPLY-EQUITIES-0008.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0009.
+               EXEC SQL
+                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
+                            BROKERID, PAYMENT, LASTCHANGED
+                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
+                            :HV-EXPIRY-DATE, :HV-BROKERID,
+                            :HV-PAYMENT, :HV-LASTCHANGED
+                       FROM GENAMT.ADDRESS
+                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+               END-EXEC.
+      *----------------------------------------------------------------*
+       VALIDATE-WITH-PROFITS-0010.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       AUDIT-WITH-PROFITS-0011.
+               MOVE 'WITH-PROFI' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0012.
+               EXEC SQL
+                     UPDATE GENAMT.COVER
                         SET PAYMENT = :HV-PAYMENT,
                             LASTCHANGED = CURRENT TIMESTAMP
                       WHERE POLICYNUMBER = :HV-POLICY-NUM
@@ -286,7 +250,15 @@
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       AUDIT-REG-NUMBER-0016.
+       RESOLVE-SUM-ASSURED-0013.
+               MOVE 'SUM-ASSURE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       NORMALISE-COLOUR-0014.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
                EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
@@ -294,7 +266,100 @@
                          TIME(TIME1)
                END-EXEC.
       *----------------------------------------------------------------*
-       AUDIT-MAKE-0017.
+       SQL-ACCESS-0015.
+               EXEC SQL
+                     DECLARE C0015 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAMT.SURCHARGE A
+                       JOIN GENAMT.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0015 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0015
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0015 END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-STATUS-CODE-0016.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       CHECK-ROOF-TYPE-0017.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO ROOF-TYPE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0018.
+               EXEC SQL
+                     DECLARE C0018 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAMT.ADDRESS A
+                       JOIN GENAMT.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0018 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0018
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0018 END-EXEC.
+      *----------------------------------------------------------------*
+       AUDIT-TERM-0019.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       EXPAND-POSTCODE-0020.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SQL-ACCESS-0021.
+               EXEC SQL
+                     DECLARE C0021 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENAMT.SURCHARGE A
+                       JOIN GENAMT.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
+               END-EXEC.
+               EXEC SQL OPEN C0021 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0021
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0021 END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-ROOF-TYPE-0022.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO ROOF-TYPE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       VALIDATE-MAKE-0023.
                MOVE SPACES TO WS-KEY-CHAR.
                STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
                          '/'              DELIMITED BY SIZE
@@ -302,61 +367,11 @@
                          INTO WS-KEY-CHAR
                END-STRING.
       *----------------------------------------------------------------*
-       SQL-ACCESS-0018.
-               EXEC SQL
-                     INSERT INTO GENAMT.SETTLEMENT
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       CHECK-REG-NUMBER-0019.
-               MOVE 'REG-NUMBER' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       FORMAT-ROOF-TYPE-0020.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0021.
-               EXEC SQL
-                     INSERT INTO GENAMT.CLAIM
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-STATUS-CODE-0022.
-               MOVE 'STATUS-COD' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       NORMALISE-TAX-BAND-0023.
-               MOVE 'TAX-BAND' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
        SQL-ACCESS-0024.
                EXEC SQL
                      DECLARE C0024 CURSOR FOR
                      SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAMT.CLAIM A
+                       FROM GENAMT.SURCHARGE A
                        JOIN GENAMT.CUSTOMER B
                          ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
                       WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
@@ -371,42 +386,39 @@
                END-PERFORM.
                EXEC SQL CLOSE C0024 END-EXEC.
       *----------------------------------------------------------------*
-       EXPAND-HOUSE-TYPE-0025.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
+       RESOLVE-NCD-YEARS-0025.
+               MOVE 'NCD-YEARS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
-       COMPUTE-BROKER-ID-0026.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
+       COMPUTE-MAKE-0026.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MAKE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
       *----------------------------------------------------------------*
        SQL-ACCESS-0027.
                EXEC SQL
-                     DECLARE C0027 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAMT.PAYMENT A
-                       JOIN GENAMT.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
+                     INSERT INTO GENAMT.SURCHARGE
+                            (CUSTOMERNUMBER, POLICYNUMBER,
+                             ISSUEDATE, EXPIRYDATE, PAYMENT)
+                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
+                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
+                             :HV-PAYMENT)
                END-EXEC.
-               EXEC SQL OPEN C0027 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0027
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0027 END-EXEC.
+      *----------------------------------------------------------------*
+       VALIDATE-ROOF-TYPE-0028.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

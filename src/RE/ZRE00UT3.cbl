@@ -56,18 +56,11 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-STATUS-CODE    PIC X(12).
-                05 WS-T-MAKE           PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
-
-      * Called module names
-       01  MOD-ZRE01F6Z              PIC X(8) VALUE 'ZRE01F6Z'.
-       01  MOD-ZCL0255P              PIC X(8) VALUE 'ZCL0255P'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-3              PIC X(8) VALUE SPACES.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -87,7 +80,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKRE0003.
+               COPY ZKRE0012.
+               COPY ZKRE0030.
+               COPY ZKRE0013.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -101,106 +96,12 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGRC')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZRE01F6Z-002.
-               PERFORM CALL-ZCL0255P-003.
-               PERFORM VALIDATE-SUM-ASSURED-0001.
-               PERFORM COMPUTE-SUM-ASSURED-0002.
-               PERFORM SQL-ACCESS-0003.
-               PERFORM COMPUTE-WITH-PROFITS-0004.
-               PERFORM NORMALISE-WITH-PROFITS-0005.
-               PERFORM SQL-ACCESS-0006.
                EXEC CICS RETURN END-EXEC.
-      *----------------------------------------------------------------*
-       CALL-ZCU01M8S-001.
-               MOVE 'ZCU01M8S' TO WS-SUBNAME-3
-               CALL WS-SUBNAME-3 USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01M8S FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZRE01F6Z-002.
-               CALL 'ZRE01F6Z' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01F6Z FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCL0255P-003.
-               EXEC CICS LINK PROGRAM('ZCL0255P')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL0255P FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       VALIDATE-SUM-ASSURED-0001.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       COMPUTE-SUM-ASSURED-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0003.
-               EXEC SQL
-                     DECLARE C0003 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENARE.COVER A
-                       JOIN GENARE.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0003 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0003
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0003 END-EXEC.
-      *----------------------------------------------------------------*
-       COMPUTE-WITH-PROFITS-0004.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       NORMALISE-WITH-PROFITS-0005.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0006.
-               EXEC SQL
-                     UPDATE GENARE.COVER
-                        SET PAYMENT = :HV-PAYMENT,
-                            LASTCHANGED = CURRENT TIMESTAMP
-                      WHERE POLICYNUMBER = :HV-POLICY-NUM
-               END-EXEC.
-               IF SQLCODE NOT = 0
-                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

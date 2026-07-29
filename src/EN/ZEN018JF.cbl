@@ -56,25 +56,20 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-COLOUR         PIC X(12).
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN01LM9              PIC X(8) VALUE 'ZEN01LM9'.
-       01  MOD-ZHO0255M              PIC X(8) VALUE 'ZHO0255M'.
+       01  MOD-ZEN01SCD              PIC X(8) VALUE 'ZEN01SCD'.
 
       * Dynamically resolved module names
-       01  WS-SUBNAME-5              PIC X(8) VALUE SPACES.
+       01  WS-SUBNAME-2              PIC X(8) VALUE SPACES.
 
       * VSAM record areas
-       01  KSDSEN88-REC.
-             03 REC-KEY                PIC 9(10).
-             03 REC-CUSTOMER           PIC 9(10).
-             03 REC-DATA               PIC X(160).
-       01  KSDSEN19-REC.
+       01  KSDSEN44-REC.
              03 REC-KEY                PIC 9(10).
              03 REC-CUSTOMER           PIC 9(10).
              03 REC-DATA               PIC X(160).
@@ -86,8 +81,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKEN0042.
-               COPY ZKEN0038.
+               COPY ZKEN0009.
+               COPY ZKEN0013.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -101,94 +96,747 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGVS')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZEN01LM9-001.
-               PERFORM CALL-ZCU01LNY-002.
-               PERFORM CALL-ZHO0255M-003.
-               PERFORM EXPAND-WITH-PROFITS-0002.
+               PERFORM CALL-ZEN01SCD-001.
+               PERFORM CALL-ZEN01FPN-002.
+               PERFORM EXPAND-REG-NUMBER-0001.
+               PERFORM APPLY-STATUS-CODE-0002.
                PERFORM FILE-ACCESS-0003.
-               PERFORM VALIDATE-BEDROOMS-0004.
-               PERFORM NORMALISE-HOUSE-TYPE-0005.
+               PERFORM COMPUTE-SUM-ASSURED-0004.
+               PERFORM FORMAT-MAKE-0005.
+               PERFORM COMPUTE-BEDROOMS-0007.
+               PERFORM CHECK-MODEL-0008.
+               PERFORM FILE-ACCESS-0009.
+               PERFORM DERIVE-MODEL-0010.
+               PERFORM CHECK-SUM-ASSURED-0011.
+               PERFORM FILE-ACCESS-0012.
+               PERFORM CHECK-TERM-0013.
+               PERFORM COMPUTE-ROOF-TYPE-0014.
+               PERFORM FILE-ACCESS-0015.
+               PERFORM AUDIT-MAKE-0016.
+               PERFORM DERIVE-MANAGED-FUND-0017.
+               PERFORM FILE-ACCESS-0018.
+               PERFORM NORMALISE-BEDROOMS-0019.
+               PERFORM REFRESH-CC-RATING-0020.
+               PERFORM FILE-ACCESS-0021.
+               PERFORM AUDIT-BEDROOMS-0022.
+               PERFORM DERIVE-COLOUR-0023.
+               PERFORM FILE-ACCESS-0024.
+               PERFORM RESOLVE-MODEL-0025.
+               PERFORM NORMALISE-MAKE-0026.
+               PERFORM FILE-ACCESS-0027.
+               PERFORM NORMALISE-VALUE-0028.
+               PERFORM FORMAT-TAX-BAND-0029.
+               PERFORM FORMAT-PREMIUM-0031.
+               PERFORM FORMAT-PREMIUM-0032.
+               PERFORM FILE-ACCESS-0033.
+               PERFORM DERIVE-STATUS-CODE-0034.
+               PERFORM DERIVE-BEDROOMS-0035.
+               PERFORM FILE-ACCESS-0036.
+               PERFORM RECONCILE-MAKE-0037.
+               PERFORM VALIDATE-WITH-PROFITS-0038.
+               PERFORM FILE-ACCESS-0039.
+               PERFORM EXPAND-TERM-0040.
+               PERFORM RESOLVE-WITH-PROFITS-0041.
+               PERFORM FILE-ACCESS-0042.
+               PERFORM NORMALISE-WITH-PROFITS-0043.
+               PERFORM NORMALISE-ROOF-TYPE-0044.
+               PERFORM FILE-ACCESS-0045.
+               PERFORM APPLY-POSTCODE-0046.
+               PERFORM REFRESH-VALUE-0047.
+               PERFORM FILE-ACCESS-0048.
+               PERFORM RESOLVE-BROKER-ID-0049.
+               PERFORM FILE-ACCESS-0051.
+               PERFORM CHECK-TAX-BAND-0052.
+               PERFORM APPLY-TAX-BAND-0053.
+               PERFORM FILE-ACCESS-0054.
+               PERFORM REFRESH-PREMIUM-0055.
+               PERFORM RESOLVE-MAKE-0056.
+               PERFORM FILE-ACCESS-0057.
+               PERFORM REFRESH-NCD-YEARS-0058.
+               PERFORM FILE-ACCESS-0060.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZEN01LM9-001.
-               CALL 'ZEN01LM9' USING DFHCOMMAREA
+       CALL-ZEN01SCD-001.
+               CALL 'ZEN01SCD' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01LM9 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01SCD FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU01LNY-002.
-               MOVE 'ZCU01LNY' TO WS-SUBNAME-5
-               CALL WS-SUBNAME-5 USING DFHCOMMAREA
+       CALL-ZEN01FPN-002.
+               MOVE 'ZEN01FPN' TO WS-SUBNAME-2
+               CALL WS-SUBNAME-2 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01LNY FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01FPN FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO0255M-003.
-               EXEC CICS LINK PROGRAM('ZHO0255M')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
+       EXPAND-REG-NUMBER-0001.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 8
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       APPLY-STATUS-CODE-0002.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0003.
+               EXEC CICS STARTBR FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
                END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO0255M FAILED' TO EM-VARIABLE
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSEN44')
+                            INTO(KSDSEN44-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSEN44') END-EXEC.
+      *----------------------------------------------------------------*
+       COMPUTE-SUM-ASSURED-0004.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-HOUSE-TYPE-0001.
-               MOVE 'HOUSE-TYPE' TO WS-T-AMOUNT(1)
+       FORMAT-MAKE-0005.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0006.
+               EXEC CICS WRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       COMPUTE-BEDROOMS-0007.
+               MOVE 'BEDROOMS' TO WS-T-AMOUNT(1)
                SEARCH ALL WS-TABLE-ENTRY
                   AT END MOVE '01' TO WS-STATUS-CODE
                   WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
                        CONTINUE
                END-SEARCH.
       *----------------------------------------------------------------*
-       EXPAND-WITH-PROFITS-0002.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO WITH-PROFITS' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
+       CHECK-MODEL-0008.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
       *----------------------------------------------------------------*
-       FILE-ACCESS-0003.
-               EXEC CICS STARTBR FILE('KSDSEN88')
+       FILE-ACCESS-0009.
+               EXEC CICS REWRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
                END-EXEC.
-               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
-                  EXEC CICS READNEXT FILE('KSDSEN88')
-                            INTO(KSDSEN88-REC)
-                            RIDFLD(WS-KEY-AREA)
-                            RESP(WS-RESP)
-                  END-EXEC
-               END-PERFORM.
-               EXEC CICS ENDBR FILE('KSDSEN88') END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
       *----------------------------------------------------------------*
-       VALIDATE-BEDROOMS-0004.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 12
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-HOUSE-TYPE-0005.
+       DERIVE-MODEL-0010.
                MOVE SPACES TO WS-KEY-CHAR.
                STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
                          '/'              DELIMITED BY SIZE
                          WS-KEY-POLICY    DELIMITED BY SIZE
                          INTO WS-KEY-CHAR
                END-STRING.
+      *----------------------------------------------------------------*
+       CHECK-SUM-ASSURED-0011.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0012.
+               EXEC CICS REWRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       CHECK-TERM-0013.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO TERM' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-ROOF-TYPE-0014.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0015.
+               EXEC CICS STARTBR FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSEN44')
+                            INTO(KSDSEN44-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSEN44') END-EXEC.
+      *----------------------------------------------------------------*
+       AUDIT-MAKE-0016.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       DERIVE-MANAGED-FUND-0017.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0018.
+               EXEC CICS STARTBR FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSEN44')
+                            INTO(KSDSEN44-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSEN44') END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-BEDROOMS-0019.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       REFRESH-CC-RATING-0020.
+               MOVE 'CC-RATING' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0021.
+               EXEC CICS WRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       AUDIT-BEDROOMS-0022.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-COLOUR-0023.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0024.
+               EXEC CICS REWRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       RESOLVE-MODEL-0025.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MODEL' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-MAKE-0026.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0027.
+               EXEC CICS STARTBR FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSEN44')
+                            INTO(KSDSEN44-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSEN44') END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-VALUE-0028.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FORMAT-TAX-BAND-0029.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO TAX-BAND' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0030.
+               EXEC CICS READ FILE('KSDSEN44')
+                         INTO(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FORMAT-PREMIUM-0031.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO PREMIUM' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-PREMIUM-0032.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0033.
+               EXEC CICS REWRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       DERIVE-STATUS-CODE-0034.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       DERIVE-BEDROOMS-0035.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0036.
+               EXEC CICS REWRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       RECONCILE-MAKE-0037.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       VALIDATE-WITH-PROFITS-0038.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0039.
+               EXEC CICS STARTBR FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSEN44')
+                            INTO(KSDSEN44-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSEN44') END-EXEC.
+      *----------------------------------------------------------------*
+       EXPAND-TERM-0040.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       RESOLVE-WITH-PROFITS-0041.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0042.
+               EXEC CICS DELETE FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       NORMALISE-WITH-PROFITS-0043.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       NORMALISE-ROOF-TYPE-0044.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0045.
+               EXEC CICS DELETE FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       APPLY-POSTCODE-0046.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       REFRESH-VALUE-0047.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0048.
+               EXEC CICS WRITE FILE('KSDSEN44')
+                         FROM(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       RESOLVE-BROKER-ID-0049.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       REFRESH-MAKE-0050.
+               MOVE 'MAKE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0051.
+               EXEC CICS READ FILE('KSDSEN44')
+                         INTO(KSDSEN44-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       CHECK-TAX-BAND-0052.
+               MOVE 'TAX-BAND' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       APPLY-TAX-BAND-0053.
+               MOVE 'TAX-BAND' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0054.
+               EXEC CICS STARTBR FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSEN44')
+                            INTO(KSDSEN44-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSEN44') END-EXEC.
+      *----------------------------------------------------------------*
+       REFRESH-PREMIUM-0055.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       RESOLVE-MAKE-0056.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MAKE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0057.
+               EXEC CICS STARTBR FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSEN44')
+                            INTO(KSDSEN44-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSEN44') END-EXEC.
+      *----------------------------------------------------------------*
+       REFRESH-NCD-YEARS-0058.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       AUDIT-VALUE-0059.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0060.
+               EXEC CICS DELETE FILE('KSDSEN44')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

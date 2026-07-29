@@ -56,17 +56,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCL0255P              PIC X(8) VALUE 'ZCL0255P'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-1              PIC X(8) VALUE SPACES.
+       01  MOD-ZRE0255R              PIC X(8) VALUE 'ZRE0255R'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -86,7 +83,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKRE0023.
+               COPY ZKRE0044.
+               COPY ZKRE0038.
+               COPY ZKRE0021.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -100,48 +99,42 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZRE01MK9-001.
-               PERFORM CALL-ZCL0255P-002.
-               PERFORM VALIDATE-SUM-ASSURED-0001.
-               PERFORM AUDIT-EXCESS-0002.
+               PERFORM CALL-ZRE0255R-001.
+               PERFORM COMPUTE-WITH-PROFITS-0002.
                PERFORM SQL-ACCESS-0003.
-               PERFORM DERIVE-PREMIUM-0004.
-               PERFORM EXPAND-MODEL-0005.
+               PERFORM DERIVE-MODEL-0004.
+               PERFORM REFRESH-MANAGED-FUND-0005.
                PERFORM SQL-ACCESS-0006.
-               PERFORM NORMALISE-BEDROOMS-0007.
-               PERFORM APPLY-AGENT-CODE-0008.
+               PERFORM EXPAND-STATUS-CODE-0007.
+               PERFORM CHECK-EQUITIES-0008.
                PERFORM SQL-ACCESS-0009.
-               PERFORM COMPUTE-CC-RATING-0010.
-               PERFORM COMPUTE-BROKER-ID-0011.
-               PERFORM RECONCILE-AGENT-CODE-0013.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZRE01MK9-001.
-               MOVE 'ZRE01MK9' TO WS-SUBNAME-1
-               CALL WS-SUBNAME-1 USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01MK9 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCL0255P-002.
-               EXEC CICS LINK PROGRAM('ZCL0255P')
+       CALL-ZRE0255R-001.
+               EXEC CICS LINK PROGRAM('ZRE0255R')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL0255P FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE0255R FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-SUM-ASSURED-0001.
+       APPLY-COLOUR-0001.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO COLOUR' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-WITH-PROFITS-0002.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
                EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
@@ -149,63 +142,66 @@
                          TIME(TIME1)
                END-EXEC.
       *----------------------------------------------------------------*
-       AUDIT-EXCESS-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
        SQL-ACCESS-0003.
                EXEC SQL
-                     SELECT POLICYNUMBER, ISSUEDATE, EXPIRYDATE,
-                            BROKERID, PAYMENT, LASTCHANGED
-                       INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
-                            :HV-EXPIRY-DATE, :HV-BROKERID,
-                            :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENARE.DISCOUNT
-                      WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
+                     UPDATE GENARE.HISTORY
+                        SET PAYMENT = :HV-PAYMENT,
+                            LASTCHANGED = CURRENT TIMESTAMP
+                      WHERE POLICYNUMBER = :HV-POLICY-NUM
                END-EXEC.
+               IF SQLCODE NOT = 0
+                  MOVE ' SQL UPDATE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
-       DERIVE-PREMIUM-0004.
+       DERIVE-MODEL-0004.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MODEL' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       REFRESH-MANAGED-FUND-0005.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 6
+                         + WS-T-AMOUNT(WS-SUB) / 8
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-MODEL-0005.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
        SQL-ACCESS-0006.
                EXEC SQL
-                     INSERT INTO GENARE.RISK
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
+                     DECLARE C0006 CURSOR FOR
+                     SELECT POLICYNUMBER, PAYMENT
+                       FROM GENARE.HISTORY A
+                       JOIN GENARE.CUSTOMER B
+                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
+                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
+                      ORDER BY A.POLICYNUMBER
                END-EXEC.
+               EXEC SQL OPEN C0006 END-EXEC.
+               PERFORM UNTIL SQLCODE NOT = 0
+                  EXEC SQL FETCH C0006
+                            INTO :HV-POLICY-NUM, :HV-PAYMENT
+                  END-EXEC
+                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
+               END-PERFORM.
+               EXEC SQL CLOSE C0006 END-EXEC.
       *----------------------------------------------------------------*
-       NORMALISE-BEDROOMS-0007.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       EXPAND-STATUS-CODE-0007.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
-       APPLY-AGENT-CODE-0008.
+       CHECK-EQUITIES-0008.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 3
+                         + WS-T-AMOUNT(WS-SUB) / 9
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL
@@ -218,44 +214,9 @@
                        INTO :HV-POLICY-NUM, :HV-ISSUE-DATE,
                             :HV-EXPIRY-DATE, :HV-BROKERID,
                             :HV-PAYMENT, :HV-LASTCHANGED
-                       FROM GENARE.RISK
+                       FROM GENARE.CLAIM
                       WHERE CUSTOMERNUMBER = :HV-CUSTOMER-NUM
                END-EXEC.
-      *----------------------------------------------------------------*
-       COMPUTE-CC-RATING-0010.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       COMPUTE-BROKER-ID-0011.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 5
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0012.
-               EXEC SQL
-                     INSERT INTO GENARE.DISCOUNT
-                            (CUSTOMERNUMBER, POLICYNUMBER,
-                             ISSUEDATE, EXPIRYDATE, PAYMENT)
-                     VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
-                             :HV-ISSUE-DATE, :HV-EXPIRY-DATE,
-                             :HV-PAYMENT)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       RECONCILE-AGENT-CODE-0013.
-               MOVE 'AGENT-CODE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

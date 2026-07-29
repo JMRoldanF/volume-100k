@@ -56,15 +56,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
                 05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-HOUSE-TYPE     PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01K5Z              PIC X(8) VALUE 'ZMT01K5Z'.
-       01  MOD-ZCU0255O              PIC X(8) VALUE 'ZCU0255O'.
+       01  MOD-ZRN01E06              PIC X(8) VALUE 'ZRN01E06'.
+       01  MOD-ZMT01DHU              PIC X(8) VALUE 'ZMT01DHU'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -84,7 +84,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0000.
+               COPY ZKMT0037.
+               COPY ZKMT0015.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -98,33 +99,52 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGTS')
+                  EXEC CICS ABEND ABCODE('LGRC')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZMT01K5Z-001.
-               PERFORM CALL-ZCU0255O-002.
+               PERFORM CALL-ZRN01E06-001.
+               PERFORM CALL-ZMT01DHU-002.
+               PERFORM AUDIT-SUM-ASSURED-0001.
+               PERFORM AUDIT-VALUE-0002.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZMT01K5Z-001.
-               CALL 'ZMT01K5Z' USING DFHCOMMAREA
+       CALL-ZRN01E06-001.
+               CALL 'ZRN01E06' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01K5Z FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRN01E06 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU0255O-002.
-               EXEC CICS LINK PROGRAM('ZCU0255O')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
+       CALL-ZMT01DHU-002.
+               CALL 'ZMT01DHU' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU0255O FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01DHU FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-SUM-ASSURED-0001.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       AUDIT-VALUE-0002.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

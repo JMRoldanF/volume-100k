@@ -56,17 +56,22 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-COLOUR         PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO01D08              PIC X(8) VALUE 'ZHO01D08'.
+       01  MOD-ZHO01H8R              PIC X(8) VALUE 'ZHO01H8R'.
+       01  MOD-ZBI0255Q              PIC X(8) VALUE 'ZBI0255Q'.
 
       * VSAM record areas
-       01  KSDSHO89-REC.
+       01  KSDSHO76-REC.
+             03 REC-KEY                PIC 9(10).
+             03 REC-CUSTOMER           PIC 9(10).
+             03 REC-DATA               PIC X(160).
+       01  KSDSHO64-REC.
              03 REC-KEY                PIC 9(10).
              03 REC-CUSTOMER           PIC 9(10).
              03 REC-DATA               PIC X(160).
@@ -78,7 +83,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKHO0049.
+               COPY ZKHO0020.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -92,109 +97,49 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGRC')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZHO01D08-001.
-               PERFORM REFRESH-TAX-BAND-0001.
-               PERFORM APPLY-EQUITIES-0002.
+               PERFORM CALL-ZHO01H8R-001.
+               PERFORM CALL-ZBI0255Q-002.
+               PERFORM COMPUTE-MODEL-0001.
+               PERFORM VALIDATE-EQUITIES-0002.
                PERFORM FILE-ACCESS-0003.
-               PERFORM DERIVE-COLOUR-0004.
+               PERFORM RESOLVE-SUM-ASSURED-0004.
+               PERFORM AUDIT-MANAGED-FUND-0005.
                PERFORM FILE-ACCESS-0006.
-               PERFORM DERIVE-WITH-PROFITS-0007.
+               PERFORM NORMALISE-BROKER-ID-0007.
+               PERFORM VALIDATE-MODEL-0008.
                PERFORM FILE-ACCESS-0009.
-               PERFORM RESOLVE-SUM-ASSURED-0010.
-               PERFORM APPLY-BEDROOMS-0011.
+               PERFORM RECONCILE-VALUE-0010.
+               PERFORM RESOLVE-ROOF-TYPE-0011.
                PERFORM FILE-ACCESS-0012.
-               PERFORM VALIDATE-VALUE-0013.
-               PERFORM APPLY-TAX-BAND-0014.
-               PERFORM FILE-ACCESS-0015.
-               PERFORM EXPAND-TERM-0016.
-               PERFORM CHECK-VALUE-0017.
-               PERFORM FILE-ACCESS-0018.
-               PERFORM DERIVE-MANAGED-FUND-0019.
-               PERFORM FORMAT-BROKER-ID-0020.
-               PERFORM FILE-ACCESS-0021.
-               PERFORM APPLY-EQUITIES-0022.
-               PERFORM RECONCILE-STATUS-CODE-0023.
-               PERFORM FILE-ACCESS-0024.
+               PERFORM VALIDATE-TAX-BAND-0013.
+               PERFORM EXPAND-EXCESS-0014.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZHO01D08-001.
-               CALL 'ZHO01D08' USING DFHCOMMAREA
+       CALL-ZHO01H8R-001.
+               CALL 'ZHO01H8R' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01D08 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01H8R FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       REFRESH-TAX-BAND-0001.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       APPLY-EQUITIES-0002.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       FILE-ACCESS-0003.
-               EXEC CICS STARTBR FILE('KSDSHO89')
-                         RIDFLD(WS-KEY-AREA)
+       CALL-ZBI0255Q-002.
+               EXEC CICS LINK PROGRAM('ZBI0255Q')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
-               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
-                  EXEC CICS READNEXT FILE('KSDSHO89')
-                            INTO(KSDSHO89-REC)
-                            RIDFLD(WS-KEY-AREA)
-                            RESP(WS-RESP)
-                  END-EXEC
-               END-PERFORM.
-               EXEC CICS ENDBR FILE('KSDSHO89') END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-COLOUR-0004.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 3
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZBI0255Q FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CHECK-CC-RATING-0005.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       FILE-ACCESS-0006.
-               EXEC CICS REWRITE FILE('KSDSHO89')
-                         FROM(KSDSHO89-REC)
-                         LENGTH(WS-FILE-LEN)
-                         RIDFLD(WS-KEY-AREA)
-                         RESP(WS-RESP)
-               END-EXEC.
-               EVALUATE WS-RESP
-                  WHEN DFHRESP(NORMAL)
-                       MOVE '00' TO WS-STATUS-CODE
-                  WHEN DFHRESP(NOTFND)
-                       MOVE '01' TO WS-STATUS-CODE
-                  WHEN DFHRESP(DUPREC)
-                       MOVE '02' TO WS-STATUS-CODE
-                  WHEN OTHER
-                       MOVE '90' TO WS-STATUS-CODE
-                       PERFORM WRITE-ERROR-MESSAGE
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       DERIVE-WITH-PROFITS-0007.
+       COMPUTE-MODEL-0001.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -203,119 +148,82 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       REFRESH-REG-NUMBER-0008.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
+       VALIDATE-EQUITIES-0002.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
       *----------------------------------------------------------------*
-       FILE-ACCESS-0009.
-               EXEC CICS DELETE FILE('KSDSHO89')
+       FILE-ACCESS-0003.
+               EXEC CICS STARTBR FILE('KSDSHO76')
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
                END-EXEC.
-               EVALUATE WS-RESP
-                  WHEN DFHRESP(NORMAL)
-                       MOVE '00' TO WS-STATUS-CODE
-                  WHEN DFHRESP(NOTFND)
-                       MOVE '01' TO WS-STATUS-CODE
-                  WHEN DFHRESP(DUPREC)
-                       MOVE '02' TO WS-STATUS-CODE
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSHO76')
+                            INTO(KSDSHO76-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSHO76') END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-SUM-ASSURED-0004.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
                   WHEN OTHER
-                       MOVE '90' TO WS-STATUS-CODE
-                       PERFORM WRITE-ERROR-MESSAGE
+                       MOVE 9 TO WS-PREMIUM-BAND
                END-EVALUATE.
       *----------------------------------------------------------------*
-       RESOLVE-SUM-ASSURED-0010.
+       AUDIT-MANAGED-FUND-0005.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
+                         + WS-T-AMOUNT(WS-SUB) / 10
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       APPLY-BEDROOMS-0011.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       FILE-ACCESS-0012.
-               EXEC CICS STARTBR FILE('KSDSHO89')
+       FILE-ACCESS-0006.
+               EXEC CICS STARTBR FILE('KSDSHO64')
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
                END-EXEC.
                PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
-                  EXEC CICS READNEXT FILE('KSDSHO89')
-                            INTO(KSDSHO89-REC)
+                  EXEC CICS READNEXT FILE('KSDSHO64')
+                            INTO(KSDSHO64-REC)
                             RIDFLD(WS-KEY-AREA)
                             RESP(WS-RESP)
                   END-EXEC
                END-PERFORM.
-               EXEC CICS ENDBR FILE('KSDSHO89') END-EXEC.
+               EXEC CICS ENDBR FILE('KSDSHO64') END-EXEC.
       *----------------------------------------------------------------*
-       VALIDATE-VALUE-0013.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
+       NORMALISE-BROKER-ID-0007.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
-       APPLY-TAX-BAND-0014.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       FILE-ACCESS-0015.
-               EXEC CICS STARTBR FILE('KSDSHO89')
-                         RIDFLD(WS-KEY-AREA)
-                         RESP(WS-RESP)
-               END-EXEC.
-               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
-                  EXEC CICS READNEXT FILE('KSDSHO89')
-                            INTO(KSDSHO89-REC)
-                            RIDFLD(WS-KEY-AREA)
-                            RESP(WS-RESP)
-                  END-EXEC
-               END-PERFORM.
-               EXEC CICS ENDBR FILE('KSDSHO89') END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-TERM-0016.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       CHECK-VALUE-0017.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO VALUE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
+       VALIDATE-MODEL-0008.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 5
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       FILE-ACCESS-0018.
-               EXEC CICS REWRITE FILE('KSDSHO89')
-                         FROM(KSDSHO89-REC)
+       FILE-ACCESS-0009.
+               EXEC CICS REWRITE FILE('KSDSHO64')
+                         FROM(KSDSHO64-REC)
                          LENGTH(WS-FILE-LEN)
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
@@ -332,76 +240,69 @@
                        PERFORM WRITE-ERROR-MESSAGE
                END-EVALUATE.
       *----------------------------------------------------------------*
-       DERIVE-MANAGED-FUND-0019.
-               MOVE 'MANAGED-FU' TO WS-T-AMOUNT(1)
+       RECONCILE-VALUE-0010.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       RESOLVE-ROOF-TYPE-0011.
+               MOVE 'ROOF-TYPE' TO WS-T-AMOUNT(1)
                SEARCH ALL WS-TABLE-ENTRY
                   AT END MOVE '01' TO WS-STATUS-CODE
                   WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
                        CONTINUE
                END-SEARCH.
       *----------------------------------------------------------------*
-       FORMAT-BROKER-ID-0020.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       FILE-ACCESS-0021.
-               EXEC CICS STARTBR FILE('KSDSHO89')
+       FILE-ACCESS-0012.
+               EXEC CICS STARTBR FILE('KSDSHO76')
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
                END-EXEC.
                PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
-                  EXEC CICS READNEXT FILE('KSDSHO89')
-                            INTO(KSDSHO89-REC)
+                  EXEC CICS READNEXT FILE('KSDSHO76')
+                            INTO(KSDSHO76-REC)
                             RIDFLD(WS-KEY-AREA)
                             RESP(WS-RESP)
                   END-EXEC
                END-PERFORM.
-               EXEC CICS ENDBR FILE('KSDSHO89') END-EXEC.
+               EXEC CICS ENDBR FILE('KSDSHO76') END-EXEC.
       *----------------------------------------------------------------*
-       APPLY-EQUITIES-0022.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
+       VALIDATE-TAX-BAND-0013.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
-       RECONCILE-STATUS-CODE-0023.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 12
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
+       EXPAND-EXCESS-0014.
+               MOVE 'EXCESS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
-       FILE-ACCESS-0024.
-               EXEC CICS REWRITE FILE('KSDSHO89')
-                         FROM(KSDSHO89-REC)
-                         LENGTH(WS-FILE-LEN)
+       FILE-ACCESS-0015.
+               EXEC CICS STARTBR FILE('KSDSHO64')
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
                END-EXEC.
-               EVALUATE WS-RESP
-                  WHEN DFHRESP(NORMAL)
-                       MOVE '00' TO WS-STATUS-CODE
-                  WHEN DFHRESP(NOTFND)
-                       MOVE '01' TO WS-STATUS-CODE
-                  WHEN DFHRESP(DUPREC)
-                       MOVE '02' TO WS-STATUS-CODE
-                  WHEN OTHER
-                       MOVE '90' TO WS-STATUS-CODE
-                       PERFORM WRITE-ERROR-MESSAGE
-               END-EVALUATE.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSHO64')
+                            INTO(KSDSHO64-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSHO64') END-EXEC.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

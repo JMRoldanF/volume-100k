@@ -86,20 +86,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
                 05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-VALUE          PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZPA01S7D              PIC X(8) VALUE 'ZPA01S7D'.
-       01  MOD-ZPA01GY3              PIC X(8) VALUE 'ZPA01GY3'.
-       01  MOD-ZPA01R6Z              PIC X(8) VALUE 'ZPA01R6Z'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-1              PIC X(8) VALUE SPACES.
-       01  WS-SUBNAME-2              PIC X(8) VALUE SPACES.
+       01  MOD-ZPA01SZI              PIC X(8) VALUE 'ZPA01SZI'.
+       01  MOD-ZPA01DCD              PIC X(8) VALUE 'ZPA01DCD'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -114,17 +109,10 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZPA01S7D-001.
-               PERFORM CALL-ZPA01GY3-003.
-               PERFORM CALL-ZPA01R6Z-004.
-               PERFORM CALL-ZPA01DDH-005.
-               PERFORM COMPUTE-VALUE-0001.
-               PERFORM NORMALISE-BEDROOMS-0002.
-               PERFORM NORMALISE-MANAGED-FUND-0003.
-               PERFORM FORMAT-MAKE-0004.
-               PERFORM AUDIT-HOUSE-TYPE-0005.
-               PERFORM REFRESH-ROOF-TYPE-0006.
-               PERFORM RECONCILE-EXCESS-0007.
+               PERFORM CALL-ZPA01SZI-001.
+               PERFORM CALL-ZPA01DCD-002.
+               PERFORM NORMALISE-VALUE-0001.
+               PERFORM VALIDATE-MODEL-0002.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -137,96 +125,31 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZPA01S7D-001.
-               CALL 'ZPA01S7D' USING DFHCOMMAREA
+       CALL-ZPA01SZI-001.
+               CALL 'ZPA01SZI' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01S7D FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01SZI FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01RBZ-002.
-               MOVE 'ZPA01RBZ' TO WS-SUBNAME-1
-               CALL WS-SUBNAME-1 USING DFHCOMMAREA
+       CALL-ZPA01DCD-002.
+               CALL 'ZPA01DCD' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01RBZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01DCD FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01GY3-003.
-               CALL 'ZPA01GY3' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01GY3 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       NORMALISE-VALUE-0001.
+               MOVE 'VALUE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
-       CALL-ZPA01R6Z-004.
-               CALL 'ZPA01R6Z' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01R6Z FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZPA01DDH-005.
-               MOVE 'ZPA01DDH' TO WS-SUBNAME-2
-               CALL WS-SUBNAME-2 USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01DDH FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       COMPUTE-VALUE-0001.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 6
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-BEDROOMS-0002.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-MANAGED-FUND-0003.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-MAKE-0004.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO MAKE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-HOUSE-TYPE-0005.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       REFRESH-ROOF-TYPE-0006.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       RECONCILE-EXCESS-0007.
+       VALIDATE-MODEL-0002.
                UNSTRING WS-KEY-CHAR DELIMITED BY '/'
                              INTO WS-KEY-CUSTOMER
                                   WS-KEY-POLICY

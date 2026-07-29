@@ -56,18 +56,20 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
+      * Called module names
+       01  MOD-ZCU01SQM              PIC X(8) VALUE 'ZCU01SQM'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-4              PIC X(8) VALUE SPACES.
+
       * VSAM record areas
-       01  KSDSCU46-REC.
-             03 REC-KEY                PIC 9(10).
-             03 REC-CUSTOMER           PIC 9(10).
-             03 REC-DATA               PIC X(160).
-       01  KSDSCU23-REC.
+       01  KSDSCU29-REC.
              03 REC-KEY                PIC 9(10).
              03 REC-CUSTOMER           PIC 9(10).
              03 REC-DATA               PIC X(160).
@@ -79,8 +81,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCU0047.
-               COPY ZKCU0052.
+               COPY ZKCU0019.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -94,36 +95,72 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CHECK-EXCESS-0001.
-               PERFORM AUDIT-POSTCODE-0002.
+               PERFORM CALL-ZCU01KS9-001.
+               PERFORM DERIVE-ROOF-TYPE-0001.
+               PERFORM NORMALISE-MANAGED-FUND-0002.
                PERFORM FILE-ACCESS-0003.
-               PERFORM VALIDATE-STATUS-CODE-0004.
-               PERFORM APPLY-EQUITIES-0005.
+               PERFORM REFRESH-EQUITIES-0004.
+               PERFORM REFRESH-STATUS-CODE-0005.
                PERFORM FILE-ACCESS-0006.
+               PERFORM VALIDATE-TAX-BAND-0007.
+               PERFORM FORMAT-SUM-ASSURED-0008.
+               PERFORM FILE-ACCESS-0009.
+               PERFORM FORMAT-AGENT-CODE-0010.
+               PERFORM FORMAT-TERM-0011.
+               PERFORM FILE-ACCESS-0012.
+               PERFORM DERIVE-BROKER-ID-0013.
+               PERFORM AUDIT-AGENT-CODE-0014.
+               PERFORM FILE-ACCESS-0015.
+               PERFORM REFRESH-MODEL-0016.
+               PERFORM FILE-ACCESS-0018.
+               PERFORM APPLY-BEDROOMS-0019.
+               PERFORM EXPAND-CC-RATING-0020.
+               PERFORM FILE-ACCESS-0021.
+               PERFORM AUDIT-TAX-BAND-0022.
+               PERFORM COMPUTE-EQUITIES-0023.
+               PERFORM FILE-ACCESS-0024.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CHECK-EXCESS-0001.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       AUDIT-POSTCODE-0002.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
+       CALL-ZCU01KS9-001.
+               MOVE 'ZCU01KS9' TO WS-SUBNAME-4
+               CALL WS-SUBNAME-4 USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCU01KS9 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
+       CALL-ZCU01SQM-002.
+               CALL 'ZCU01SQM' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCU01SQM FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-ROOF-TYPE-0001.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       NORMALISE-MANAGED-FUND-0002.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
        FILE-ACCESS-0003.
-               EXEC CICS READ FILE('KSDSCU23')
-                         INTO(KSDSCU23-REC)
+               EXEC CICS READ FILE('KSDSCU29')
+                         INTO(KSDSCU29-REC)
                          LENGTH(WS-FILE-LEN)
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
@@ -140,15 +177,7 @@
                        PERFORM WRITE-ERROR-MESSAGE
                END-EVALUATE.
       *----------------------------------------------------------------*
-       VALIDATE-STATUS-CODE-0004.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       APPLY-EQUITIES-0005.
+       REFRESH-EQUITIES-0004.
                MOVE SPACES TO WS-KEY-CHAR.
                STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
                          '/'              DELIMITED BY SIZE
@@ -156,9 +185,236 @@
                          INTO WS-KEY-CHAR
                END-STRING.
       *----------------------------------------------------------------*
+       REFRESH-STATUS-CODE-0005.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
        FILE-ACCESS-0006.
-               EXEC CICS WRITE FILE('KSDSCU46')
-                         FROM(KSDSCU46-REC)
+               EXEC CICS DELETE FILE('KSDSCU29')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       VALIDATE-TAX-BAND-0007.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-SUM-ASSURED-0008.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 7
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0009.
+               EXEC CICS READ FILE('KSDSCU29')
+                         INTO(KSDSCU29-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FORMAT-AGENT-CODE-0010.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO AGENT-CODE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-TERM-0011.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0012.
+               EXEC CICS READ FILE('KSDSCU29')
+                         INTO(KSDSCU29-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       DERIVE-BROKER-ID-0013.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       AUDIT-AGENT-CODE-0014.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0015.
+               EXEC CICS READ FILE('KSDSCU29')
+                         INTO(KSDSCU29-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       REFRESH-MODEL-0016.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       AUDIT-HOUSE-TYPE-0017.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0018.
+               EXEC CICS DELETE FILE('KSDSCU29')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       APPLY-BEDROOMS-0019.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       EXPAND-CC-RATING-0020.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0021.
+               EXEC CICS READ FILE('KSDSCU29')
+                         INTO(KSDSCU29-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       AUDIT-TAX-BAND-0022.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO TAX-BAND' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-EQUITIES-0023.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 7
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0024.
+               EXEC CICS READ FILE('KSDSCU29')
+                         INTO(KSDSCU29-REC)
                          LENGTH(WS-FILE-LEN)
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)

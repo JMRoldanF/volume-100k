@@ -56,22 +56,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
                 05 WS-T-WITH-PROFITS   PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01E0B              PIC X(8) VALUE 'ZMT01E0B'.
-       01  MOD-ZCL01GO9              PIC X(8) VALUE 'ZCL01GO9'.
+       01  MOD-ZCL01O4X              PIC X(8) VALUE 'ZCL01O4X'.
+       01  MOD-ZCL0255P              PIC X(8) VALUE 'ZCL0255P'.
 
       * VSAM record areas
-       01  KSDSCL20-REC.
-             03 REC-KEY                PIC 9(10).
-             03 REC-CUSTOMER           PIC 9(10).
-             03 REC-DATA               PIC X(160).
-       01  KSDSCL09-REC.
+       01  KSDSCL28-REC.
              03 REC-KEY                PIC 9(10).
              03 REC-CUSTOMER           PIC 9(10).
              03 REC-DATA               PIC X(160).
@@ -83,8 +79,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCL0040.
-               COPY ZKCL0043.
+               COPY ZKCL0021.
+               COPY ZKCL0003.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -98,30 +94,109 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGTS')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZMT01E0B-001.
-               PERFORM CALL-ZCL01GO9-002.
+               PERFORM CALL-ZCL01O4X-001.
+               PERFORM CALL-ZCL0255P-002.
+               PERFORM CHECK-EXCESS-0001.
+               PERFORM CHECK-HOUSE-TYPE-0002.
+               PERFORM FILE-ACCESS-0003.
+               PERFORM FORMAT-CC-RATING-0005.
+               PERFORM FILE-ACCESS-0006.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZMT01E0B-001.
-               CALL 'ZMT01E0B' USING DFHCOMMAREA
+       CALL-ZCL01O4X-001.
+               CALL 'ZCL01O4X' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01E0B FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCL01O4X FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCL01GO9-002.
-               CALL 'ZCL01GO9' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
+       CALL-ZCL0255P-002.
+               EXEC CICS LINK PROGRAM('ZCL0255P')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL01GO9 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCL0255P FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
+      *----------------------------------------------------------------*
+       CHECK-EXCESS-0001.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO EXCESS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       CHECK-HOUSE-TYPE-0002.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0003.
+               EXEC CICS READ FILE('KSDSCL28')
+                         INTO(KSDSCL28-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       REFRESH-AGENT-CODE-0004.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       FORMAT-CC-RATING-0005.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0006.
+               EXEC CICS DELETE FILE('KSDSCL28')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

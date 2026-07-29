@@ -56,15 +56,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZRE01DEJ              PIC X(8) VALUE 'ZRE01DEJ'.
-       01  MOD-ZMT01PPZ              PIC X(8) VALUE 'ZMT01PPZ'.
+       01  MOD-ZRE01TXJ              PIC X(8) VALUE 'ZRE01TXJ'.
+       01  MOD-ZMB01LID              PIC X(8) VALUE 'ZMB01LID'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -84,7 +84,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKRE0019.
+               COPY ZKRE0028.
+               COPY ZKRE0008.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -98,47 +99,30 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGCA')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZRE01DEJ-001.
-               PERFORM CALL-ZMT01PPZ-002.
-               PERFORM APPLY-TERM-0001.
-               PERFORM DERIVE-HOUSE-TYPE-0002.
+               PERFORM CALL-ZRE01TXJ-001.
+               PERFORM CALL-ZMB01LID-002.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZRE01DEJ-001.
-               CALL 'ZRE01DEJ' USING DFHCOMMAREA
+       CALL-ZRE01TXJ-001.
+               CALL 'ZRE01TXJ' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01DEJ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01TXJ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01PPZ-002.
-               CALL 'ZMT01PPZ' USING DFHCOMMAREA
+       CALL-ZMB01LID-002.
+               CALL 'ZMB01LID' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01PPZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMB01LID FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       APPLY-TERM-0001.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       DERIVE-HOUSE-TYPE-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

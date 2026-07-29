@@ -4,6 +4,7 @@
       *
       *  Generated volume-test source. Layer 3,
       *  type subroutine, domain HOUSE.
+      *  Tags: chain
       ******************************************************************
        IDENTIFICATION DIVISION.
        PROGRAM-ID. ZHO01MQ8.
@@ -56,11 +57,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
+                05 WS-T-POSTCODE       PIC X(12).
                 05 WS-T-TERM           PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
                 05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-MAKE           PIC X(12).
-                05 WS-T-EQUITIES       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
+
+      * Called module names
+       01  MOD-ZHO01U90              PIC X(8) VALUE 'ZHO01U90'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -68,7 +72,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKHO0006.
+               COPY ZKHO0059.
+               COPY ZKHO0028.
                COPY ZKHO0010.
       ******************************************************************
       * P R O C E D U R E S                                            *
@@ -88,60 +93,16 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM NORMALISE-SUM-ASSURED-0001.
-               PERFORM REFRESH-NCD-YEARS-0002.
-               PERFORM APPLY-EXCESS-0003.
-               PERFORM DERIVE-POSTCODE-0004.
-               PERFORM CHECK-NCD-YEARS-0005.
-               PERFORM AUDIT-SUM-ASSURED-0006.
+               PERFORM CALL-ZHO01U90-001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       NORMALISE-SUM-ASSURED-0001.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO SUM-ASSURED' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       REFRESH-NCD-YEARS-0002.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       APPLY-EXCESS-0003.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       DERIVE-POSTCODE-0004.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
+       CALL-ZHO01U90-001.
+               CALL 'ZHO01U90' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZHO01U90 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       CHECK-NCD-YEARS-0005.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO NCD-YEARS' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-SUM-ASSURED-0006.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

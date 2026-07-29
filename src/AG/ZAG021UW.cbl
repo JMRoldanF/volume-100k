@@ -86,16 +86,16 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-VALUE          PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-TERM           PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU01FFI              PIC X(8) VALUE 'ZCU01FFI'.
-       01  MOD-ZAG01KQG              PIC X(8) VALUE 'ZAG01KQG'.
-       01  MOD-ZPA01R0B              PIC X(8) VALUE 'ZPA01R0B'.
+       01  MOD-ZAG01RPG              PIC X(8) VALUE 'ZAG01RPG'.
+       01  MOD-ZAG01S24              PIC X(8) VALUE 'ZAG01S24'.
+       01  MOD-ZIF00NUG              PIC X(8) VALUE 'ZIF00NUG'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -110,11 +110,9 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZCU01FFI-001.
-               PERFORM CALL-ZAG01KQG-002.
-               PERFORM CALL-ZPA01R0B-003.
-               PERFORM DERIVE-PREMIUM-0001.
-               PERFORM RESOLVE-EXCESS-0002.
+               PERFORM CALL-ZAG01RPG-001.
+               PERFORM CALL-ZAG01S24-002.
+               PERFORM CALL-ZIF00NUG-003.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -127,49 +125,29 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZCU01FFI-001.
-               CALL 'ZCU01FFI' USING DFHCOMMAREA
+       CALL-ZAG01RPG-001.
+               CALL 'ZAG01RPG' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01FFI FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01RPG FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01KQG-002.
-               CALL 'ZAG01KQG' USING DFHCOMMAREA
+       CALL-ZAG01S24-002.
+               CALL 'ZAG01S24' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01KQG FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01S24 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01R0B-003.
-               CALL 'ZPA01R0B' USING DFHCOMMAREA
+       CALL-ZIF00NUG-003.
+               CALL 'ZIF00NUG' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01R0B FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZIF00NUG FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       DERIVE-PREMIUM-0001.
-               MOVE 'PREMIUM' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       RESOLVE-EXCESS-0002.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

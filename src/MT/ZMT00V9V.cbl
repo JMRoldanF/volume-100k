@@ -56,16 +56,16 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-TERM           PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCL01F8L              PIC X(8) VALUE 'ZCL01F8L'.
-       01  MOD-ZMT01IAR              PIC X(8) VALUE 'ZMT01IAR'.
-       01  MOD-ZEN0255N              PIC X(8) VALUE 'ZEN0255N'.
+       01  MOD-ZMT01P0N              PIC X(8) VALUE 'ZMT01P0N'.
+       01  MOD-ZMT01TPM              PIC X(8) VALUE 'ZMT01TPM'.
+       01  MOD-ZRE0255R              PIC X(8) VALUE 'ZRE0255R'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -85,9 +85,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0053.
-               COPY ZKMT0054.
-               COPY ZKMT0020.
+               COPY ZKMT0031.
+               COPY ZKMT0043.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -106,35 +105,35 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCL01F8L-001.
-               PERFORM CALL-ZMT01IAR-002.
-               PERFORM CALL-ZEN0255N-003.
+               PERFORM CALL-ZMT01P0N-001.
+               PERFORM CALL-ZMT01TPM-002.
+               PERFORM CALL-ZRE0255R-003.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCL01F8L-001.
-               CALL 'ZCL01F8L' USING DFHCOMMAREA
+       CALL-ZMT01P0N-001.
+               CALL 'ZMT01P0N' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL01F8L FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01P0N FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01IAR-002.
-               CALL 'ZMT01IAR' USING DFHCOMMAREA
+       CALL-ZMT01TPM-002.
+               CALL 'ZMT01TPM' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01IAR FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01TPM FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN0255N-003.
-               EXEC CICS LINK PROGRAM('ZEN0255N')
+       CALL-ZRE0255R-003.
+               EXEC CICS LINK PROGRAM('ZRE0255R')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN0255N FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE0255R FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

@@ -86,16 +86,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-TERM           PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZAG01UAC              PIC X(8) VALUE 'ZAG01UAC'.
-       01  MOD-ZAG01DE0              PIC X(8) VALUE 'ZAG01DE0'.
-       01  MOD-ZAG01NPE              PIC X(8) VALUE 'ZAG01NPE'.
+       01  MOD-ZAC01FGS              PIC X(8) VALUE 'ZAC01FGS'.
+       01  MOD-ZAC01TJ3              PIC X(8) VALUE 'ZAC01TJ3'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -110,9 +109,8 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZAG01UAC-001.
-               PERFORM CALL-ZAG01DE0-002.
-               PERFORM CALL-ZAG01NPE-003.
+               PERFORM CALL-ZAC01FGS-001.
+               PERFORM CALL-ZAC01TJ3-002.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -125,27 +123,19 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZAG01UAC-001.
-               CALL 'ZAG01UAC' USING DFHCOMMAREA
+       CALL-ZAC01FGS-001.
+               CALL 'ZAC01FGS' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01UAC FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAC01FGS FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01DE0-002.
-               CALL 'ZAG01DE0' USING DFHCOMMAREA
+       CALL-ZAC01TJ3-002.
+               CALL 'ZAC01TJ3' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01DE0 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZAG01NPE-003.
-               CALL 'ZAG01NPE' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01NPE FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAC01TJ3 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

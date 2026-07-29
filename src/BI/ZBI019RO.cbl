@@ -56,22 +56,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MAKE           PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
                 05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-TERM           PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZBI01L72              PIC X(8) VALUE 'ZBI01L72'.
-       01  MOD-ZCL0255P              PIC X(8) VALUE 'ZCL0255P'.
+       01  MOD-ZBI01Q2O              PIC X(8) VALUE 'ZBI01Q2O'.
+
+      * Dynamically resolved module names
+       01  WS-PROGNAME-8             PIC X(8) VALUE SPACES.
+       01  WS-SUBNAME-7              PIC X(8) VALUE SPACES.
 
       * VSAM record areas
-       01  KSDSBI77-REC.
-             03 REC-KEY                PIC 9(10).
-             03 REC-CUSTOMER           PIC 9(10).
-             03 REC-DATA               PIC X(160).
-       01  KSDSBI10-REC.
+       01  KSDSBI73-REC.
              03 REC-KEY                PIC 9(10).
              03 REC-CUSTOMER           PIC 9(10).
              03 REC-DATA               PIC X(160).
@@ -83,9 +82,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKBI0050.
-               COPY ZKBI0031.
-               COPY ZKBI0035.
+               COPY ZKBI0043.
+               COPY ZKBI0003.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -99,30 +97,56 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZBI01L72-001.
-               PERFORM CALL-ZCL0255P-002.
-               PERFORM EXPAND-REG-NUMBER-0001.
-               PERFORM APPLY-TERM-0002.
+               PERFORM CALL-ZQU01IGV-001.
+               PERFORM CALL-ZBI01Q2O-002.
+               PERFORM CALL-ZCL0255P-003.
+               PERFORM RECONCILE-PREMIUM-0001.
                PERFORM FILE-ACCESS-0003.
-               PERFORM RECONCILE-TERM-0005.
+               PERFORM CHECK-MODEL-0004.
+               PERFORM AUDIT-WITH-PROFITS-0005.
                PERFORM FILE-ACCESS-0006.
+               PERFORM DERIVE-VALUE-0007.
+               PERFORM DERIVE-HOUSE-TYPE-0008.
+               PERFORM FILE-ACCESS-0009.
+               PERFORM FORMAT-REG-NUMBER-0010.
+               PERFORM AUDIT-SUM-ASSURED-0011.
+               PERFORM FILE-ACCESS-0012.
+               PERFORM EXPAND-EQUITIES-0013.
+               PERFORM FILE-ACCESS-0015.
+               PERFORM APPLY-AGENT-CODE-0016.
+               PERFORM DERIVE-WITH-PROFITS-0017.
+               PERFORM FILE-ACCESS-0018.
+               PERFORM CHECK-TERM-0019.
+               PERFORM FORMAT-POSTCODE-0020.
+               PERFORM FILE-ACCESS-0021.
+               PERFORM AUDIT-BEDROOMS-0022.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZBI01L72-001.
-               CALL 'ZBI01L72' USING DFHCOMMAREA
+       CALL-ZQU01IGV-001.
+               MOVE 'ZQU01IGV' TO WS-SUBNAME-7
+               CALL WS-SUBNAME-7 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01L72 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZQU01IGV FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCL0255P-002.
-               EXEC CICS LINK PROGRAM('ZCL0255P')
+       CALL-ZBI01Q2O-002.
+               CALL 'ZBI01Q2O' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZBI01Q2O FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZCL0255P-003.
+               MOVE 'ZCL0255P' TO WS-PROGNAME-8
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-8)
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
@@ -132,24 +156,58 @@
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-REG-NUMBER-0001.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO REG-NUMBER' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
+       RECONCILE-PREMIUM-0001.
+               MOVE 'PREMIUM' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
-       APPLY-TERM-0002.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO TERM' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
+       REFRESH-AGENT-CODE-0002.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
        FILE-ACCESS-0003.
-               EXEC CICS DELETE FILE('KSDSBI77')
+               EXEC CICS STARTBR FILE('KSDSBI73')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSBI73')
+                            INTO(KSDSBI73-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSBI73') END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-MODEL-0004.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       AUDIT-WITH-PROFITS-0005.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0006.
+               EXEC CICS REWRITE FILE('KSDSBI73')
+                         FROM(KSDSBI73-REC)
+                         LENGTH(WS-FILE-LEN)
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
                END-EXEC.
@@ -165,7 +223,16 @@
                        PERFORM WRITE-ERROR-MESSAGE
                END-EVALUATE.
       *----------------------------------------------------------------*
-       VALIDATE-SUM-ASSURED-0004.
+       DERIVE-VALUE-0007.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 4
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-HOUSE-TYPE-0008.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -174,18 +241,46 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       RECONCILE-TERM-0005.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
+       FILE-ACCESS-0009.
+               EXEC CICS DELETE FILE('KSDSBI73')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
       *----------------------------------------------------------------*
-       FILE-ACCESS-0006.
-               EXEC CICS WRITE FILE('KSDSBI77')
-                         FROM(KSDSBI77-REC)
+       FORMAT-REG-NUMBER-0010.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       AUDIT-SUM-ASSURED-0011.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0012.
+               EXEC CICS WRITE FILE('KSDSBI73')
+                         FROM(KSDSBI73-REC)
                          LENGTH(WS-FILE-LEN)
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
@@ -200,6 +295,110 @@
                   WHEN OTHER
                        MOVE '90' TO WS-STATUS-CODE
                        PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       EXPAND-EQUITIES-0013.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-CC-RATING-0014.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0015.
+               EXEC CICS READ FILE('KSDSBI73')
+                         INTO(KSDSBI73-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       APPLY-AGENT-CODE-0016.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-WITH-PROFITS-0017.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO WITH-PROFITS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0018.
+               EXEC CICS STARTBR FILE('KSDSBI73')
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               PERFORM UNTIL WS-RESP NOT = DFHRESP(NORMAL)
+                  EXEC CICS READNEXT FILE('KSDSBI73')
+                            INTO(KSDSBI73-REC)
+                            RIDFLD(WS-KEY-AREA)
+                            RESP(WS-RESP)
+                  END-EXEC
+               END-PERFORM.
+               EXEC CICS ENDBR FILE('KSDSBI73') END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-TERM-0019.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-POSTCODE-0020.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0021.
+               EXEC CICS REWRITE FILE('KSDSBI73')
+                         FROM(KSDSBI73-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       AUDIT-BEDROOMS-0022.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
                END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

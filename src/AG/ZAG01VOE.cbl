@@ -86,17 +86,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-TERM           PIC X(12).
                 05 WS-T-HOUSE-TYPE     PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZAG01PSO              PIC X(8) VALUE 'ZAG01PSO'.
-       01  MOD-ZAG01K2A              PIC X(8) VALUE 'ZAG01K2A'.
-       01  MOD-ZAG01O44              PIC X(8) VALUE 'ZAG01O44'.
-       01  MOD-ZAG00O9K              PIC X(8) VALUE 'ZAG00O9K'.
+       01  MOD-ZAC01PC8              PIC X(8) VALUE 'ZAC01PC8'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-4              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -111,19 +111,10 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZAG01PSO-001.
-               PERFORM CALL-ZAG01K2A-002.
-               PERFORM CALL-ZAG01O44-003.
-               PERFORM CALL-ZAG00O9K-004.
-               PERFORM CHECK-MANAGED-FUND-0001.
-               PERFORM DERIVE-AGENT-CODE-0002.
-               PERFORM FORMAT-NCD-YEARS-0003.
-               PERFORM EXPAND-HOUSE-TYPE-0005.
-               PERFORM EXPAND-BROKER-ID-0006.
-               PERFORM REFRESH-POSTCODE-0007.
-               PERFORM COMPUTE-SUM-ASSURED-0008.
-               PERFORM CHECK-EQUITIES-0009.
-               PERFORM NORMALISE-NCD-YEARS-0010.
+               PERFORM CALL-ZAG01SG7-001.
+               PERFORM CALL-ZAC01PC8-002.
+               PERFORM AUDIT-EXCESS-0001.
+               PERFORM CHECK-PREMIUM-0002.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -136,111 +127,36 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZAG01PSO-001.
-               CALL 'ZAG01PSO' USING DFHCOMMAREA
+       CALL-ZAG01SG7-001.
+               MOVE 'ZAG01SG7' TO WS-SUBNAME-4
+               CALL WS-SUBNAME-4 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01PSO FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01SG7 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01K2A-002.
-               CALL 'ZAG01K2A' USING DFHCOMMAREA
+       CALL-ZAC01PC8-002.
+               CALL 'ZAC01PC8' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01K2A FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAC01PC8 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01O44-003.
-               CALL 'ZAG01O44' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01O44 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       AUDIT-EXCESS-0001.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
       *----------------------------------------------------------------*
-       CALL-ZAG00O9K-004.
-               CALL 'ZAG00O9K' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG00O9K FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CHECK-MANAGED-FUND-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       DERIVE-AGENT-CODE-0002.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       FORMAT-NCD-YEARS-0003.
-               MOVE 'NCD-YEARS' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       DERIVE-CC-RATING-0004.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       EXPAND-HOUSE-TYPE-0005.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       EXPAND-BROKER-ID-0006.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       REFRESH-POSTCODE-0007.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO POSTCODE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       COMPUTE-SUM-ASSURED-0008.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       CHECK-EQUITIES-0009.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 5
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-NCD-YEARS-0010.
+       CHECK-PREMIUM-0002.
                MOVE SPACES TO WS-KEY-CHAR.
                STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
                          '/'              DELIMITED BY SIZE

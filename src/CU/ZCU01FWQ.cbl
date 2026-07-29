@@ -4,7 +4,6 @@
       *
       *  Generated volume-test source. Layer 3,
       *  type subroutine, domain CUSTOMER.
-      *  Tags: chain
       ******************************************************************
        IDENTIFICATION DIVISION.
        PROGRAM-ID. ZCU01FWQ.
@@ -57,14 +56,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-HOUSE-TYPE     PIC X(12).
-                05 WS-T-CC-RATING      PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZRE01IDF              PIC X(8) VALUE 'ZRE01IDF'.
+       01  MOD-ZCU01MFI              PIC X(8) VALUE 'ZCU01MFI'.
+       01  MOD-ZCL0255P              PIC X(8) VALUE 'ZCL0255P'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -72,8 +72,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCU0030.
-               COPY ZKCU0041.
+               COPY ZKCU0040.
+               COPY ZKCU0007.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -87,24 +87,45 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGVS')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZRE01IDF-001.
-               PERFORM RESOLVE-STATUS-CODE-0001.
+               PERFORM CALL-ZCU01MFI-001.
+               PERFORM CALL-ZCL0255P-002.
+               PERFORM COMPUTE-MAKE-0001.
+               PERFORM RESOLVE-POSTCODE-0002.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZRE01IDF-001.
-               CALL 'ZRE01IDF' USING DFHCOMMAREA
+       CALL-ZCU01MFI-001.
+               CALL 'ZCU01MFI' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01IDF FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01MFI FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       RESOLVE-STATUS-CODE-0001.
+       CALL-ZCL0255P-002.
+               EXEC CICS LINK PROGRAM('ZCL0255P')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCL0255P FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-MAKE-0001.
+               MOVE 'MAKE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       RESOLVE-POSTCODE-0002.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
                EXEC CICS FORMATTIME ABSTIME(ABS-TIME)

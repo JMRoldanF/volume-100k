@@ -56,19 +56,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
+                05 WS-T-STATUS-CODE    PIC X(12).
                 05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCL01QNZ              PIC X(8) VALUE 'ZCL01QNZ'.
-       01  MOD-ZCL01R4D              PIC X(8) VALUE 'ZCL01R4D'.
-       01  MOD-ZAG0255S              PIC X(8) VALUE 'ZAG0255S'.
+       01  MOD-ZCL01M81              PIC X(8) VALUE 'ZCL01M81'.
 
       * VSAM record areas
-       01  KSDSCL64-REC.
+       01  KSDSCL56-REC.
              03 REC-KEY                PIC 9(10).
              03 REC-CUSTOMER           PIC 9(10).
              03 REC-DATA               PIC X(160).
@@ -80,8 +78,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCL0056.
-               COPY ZKCL0022.
+               COPY ZKCL0031.
+               COPY ZKCL0018.
+               COPY ZKCL0012.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -95,69 +94,45 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGVS')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCL01QNZ-001.
-               PERFORM CALL-ZCL01R4D-002.
-               PERFORM CALL-ZAG0255S-003.
-               PERFORM RESOLVE-ROOF-TYPE-0001.
+               PERFORM CALL-ZCL01M81-001.
+               PERFORM REFRESH-AGENT-CODE-0001.
+               PERFORM FORMAT-COLOUR-0002.
                PERFORM FILE-ACCESS-0003.
-               PERFORM DERIVE-BROKER-ID-0004.
+               PERFORM CHECK-PREMIUM-0004.
+               PERFORM CHECK-POSTCODE-0005.
+               PERFORM FILE-ACCESS-0006.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCL01QNZ-001.
-               CALL 'ZCL01QNZ' USING DFHCOMMAREA
+       CALL-ZCL01M81-001.
+               CALL 'ZCL01M81' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL01QNZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCL01M81 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCL01R4D-002.
-               CALL 'ZCL01R4D' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL01R4D FAILED' TO EM-VARIABLE
+       REFRESH-AGENT-CODE-0001.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG0255S-003.
-               EXEC CICS LINK PROGRAM('ZAG0255S')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
+       FORMAT-COLOUR-0002.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG0255S FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       RESOLVE-ROOF-TYPE-0001.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       RESOLVE-SUM-ASSURED-0002.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
       *----------------------------------------------------------------*
        FILE-ACCESS-0003.
-               EXEC CICS WRITE FILE('KSDSCL64')
-                         FROM(KSDSCL64-REC)
+               EXEC CICS WRITE FILE('KSDSCL56')
+                         FROM(KSDSCL56-REC)
                          LENGTH(WS-FILE-LEN)
                          RIDFLD(WS-KEY-AREA)
                          RESP(WS-RESP)
@@ -174,10 +149,45 @@
                        PERFORM WRITE-ERROR-MESSAGE
                END-EVALUATE.
       *----------------------------------------------------------------*
-       DERIVE-BROKER-ID-0004.
+       CHECK-PREMIUM-0004.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       CHECK-POSTCODE-0005.
+               MOVE 'POSTCODE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0006.
+               EXEC CICS WRITE FILE('KSDSCL56')
+                         FROM(KSDSCL56-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       VALIDATE-TERM-0007.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
+                         + WS-T-AMOUNT(WS-SUB) / 6
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL

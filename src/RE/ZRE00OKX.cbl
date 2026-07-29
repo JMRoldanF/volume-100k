@@ -56,17 +56,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
                 05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-BROKER-ID      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
-      * Called module names
-       01  MOD-ZRE01LW3              PIC X(8) VALUE 'ZRE01LW3'.
-
       * Dynamically resolved module names
-       01  WS-SUBNAME-3              PIC X(8) VALUE SPACES.
+       01  WS-PROGNAME-7             PIC X(8) VALUE SPACES.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -86,7 +83,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKRE0053.
+               COPY ZKRE0015.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -100,29 +97,23 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGVS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZRE01NVH-001.
-               PERFORM CALL-ZRE01LW3-002.
+               PERFORM CALL-ZMT0255L-001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZRE01NVH-001.
-               MOVE 'ZRE01NVH' TO WS-SUBNAME-3
-               CALL WS-SUBNAME-3 USING DFHCOMMAREA
-                         WS-STATUS-CODE.
+       CALL-ZMT0255L-001.
+               MOVE 'ZMT0255L' TO WS-PROGNAME-7
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-7)
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01NVH FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZRE01LW3-002.
-               CALL 'ZRE01LW3' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01LW3 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT0255L FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

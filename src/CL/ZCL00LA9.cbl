@@ -56,23 +56,16 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-HOUSE-TYPE     PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCL00XWZ              PIC X(8) VALUE 'ZCL00XWZ'.
-       01  MOD-ZPA00WH5              PIC X(8) VALUE 'ZPA00WH5'.
-       01  MOD-ZCL019BT              PIC X(8) VALUE 'ZCL019BT'.
-       01  MOD-ZCL017DT              PIC X(8) VALUE 'ZCL017DT'.
-       01  MOD-ZAG01SFO              PIC X(8) VALUE 'ZAG01SFO'.
-       01  MOD-ZCL01MLL              PIC X(8) VALUE 'ZCL01MLL'.
-       01  MOD-ZEN0255N              PIC X(8) VALUE 'ZEN0255N'.
-
-      * Dynamically resolved module names
-       01  WS-PROGNAME-5             PIC X(8) VALUE SPACES.
+       01  MOD-ZAU00Y3W              PIC X(8) VALUE 'ZAU00Y3W'.
+       01  MOD-ZCL00QQ8              PIC X(8) VALUE 'ZCL00QQ8'.
+       01  MOD-ZCL01Q7W              PIC X(8) VALUE 'ZCL01Q7W'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -80,7 +73,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCL0049.
+               COPY ZKCL0027.
+               COPY ZKCL0051.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -94,102 +88,119 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCL00NYX-001.
-               PERFORM CALL-ZCL00XWZ-002.
-               PERFORM CALL-ZPA00WH5-003.
-               PERFORM CALL-ZCL019BT-004.
-               PERFORM CALL-ZAG01SFO-006.
-               PERFORM CALL-ZCL01MLL-007.
-               PERFORM CALL-ZEN0255N-008.
+               PERFORM CALL-ZAU00Y3W-001.
+               PERFORM CALL-ZCL00QQ8-002.
+               PERFORM CALL-ZCL01Q7W-003.
+               PERFORM EXPAND-EQUITIES-0001.
+               PERFORM RESOLVE-NCD-YEARS-0002.
+               PERFORM RECONCILE-AGENT-CODE-0003.
+               PERFORM REFRESH-VALUE-0004.
+               PERFORM NORMALISE-TAX-BAND-0005.
+               PERFORM CHECK-STATUS-CODE-0006.
+               PERFORM FORMAT-BROKER-ID-0007.
+               PERFORM APPLY-BEDROOMS-0009.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCL00NYX-001.
-               MOVE 'ZCL00NYX' TO WS-PROGNAME-5
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-5)
+       CALL-ZAU00Y3W-001.
+               EXEC CICS LINK PROGRAM('ZAU00Y3W')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL00NYX FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAU00Y3W FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCL00XWZ-002.
-               EXEC CICS LINK PROGRAM('ZCL00XWZ')
+       CALL-ZCL00QQ8-002.
+               EXEC CICS LINK PROGRAM('ZCL00QQ8')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL00XWZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCL00QQ8 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA00WH5-003.
-               EXEC CICS LINK PROGRAM('ZPA00WH5')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA00WH5 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCL019BT-004.
-               EXEC CICS LINK PROGRAM('ZCL019BT')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL019BT FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCL017DT-005.
-               EXEC CICS LINK PROGRAM('ZCL017DT')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL017DT FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZAG01SFO-006.
-               CALL 'ZAG01SFO' USING DFHCOMMAREA
+       CALL-ZCL01Q7W-003.
+               CALL 'ZCL01Q7W' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01SFO FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCL01Q7W FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCL01MLL-007.
-               CALL 'ZCL01MLL' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL01MLL FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
+       EXPAND-EQUITIES-0001.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       RESOLVE-NCD-YEARS-0002.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO NCD-YEARS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN0255N-008.
-               EXEC CICS LINK PROGRAM('ZEN0255N')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
+       RECONCILE-AGENT-CODE-0003.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       REFRESH-VALUE-0004.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 5
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-TAX-BAND-0005.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       CHECK-STATUS-CODE-0006.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN0255N FAILED' TO EM-VARIABLE
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-BROKER-ID-0007.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       CHECK-REG-NUMBER-0008.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
+      *----------------------------------------------------------------*
+       APPLY-BEDROOMS-0009.
+               MOVE 'BEDROOMS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

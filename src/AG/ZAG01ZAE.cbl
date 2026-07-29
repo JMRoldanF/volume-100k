@@ -86,17 +86,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
                 05 WS-T-MODEL          PIC X(12).
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZAG01DHC              PIC X(8) VALUE 'ZAG01DHC'.
-       01  MOD-ZAG01LK6              PIC X(8) VALUE 'ZAG01LK6'.
-       01  MOD-ZAG01SN6              PIC X(8) VALUE 'ZAG01SN6'.
-       01  MOD-ZAG0125U              PIC X(8) VALUE 'ZAG0125U'.
+       01  MOD-ZAG01F2Z              PIC X(8) VALUE 'ZAG01F2Z'.
+       01  MOD-ZAC01HCN              PIC X(8) VALUE 'ZAC01HCN'.
+       01  MOD-ZAG01KWO              PIC X(8) VALUE 'ZAG01KWO'.
+       01  MOD-ZAG01S5I              PIC X(8) VALUE 'ZAG01S5I'.
+       01  MOD-ZIF01EMO              PIC X(8) VALUE 'ZIF01EMO'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-4              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -111,17 +115,12 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZAG01DHC-001.
-               PERFORM CALL-ZAG01LK6-002.
-               PERFORM CALL-ZAG0125U-004.
-               PERFORM FORMAT-HOUSE-TYPE-0001.
-               PERFORM NORMALISE-MANAGED-FUND-0002.
-               PERFORM COMPUTE-POSTCODE-0003.
-               PERFORM RECONCILE-EQUITIES-0004.
-               PERFORM COMPUTE-NCD-YEARS-0005.
-               PERFORM REFRESH-NCD-YEARS-0006.
-               PERFORM DERIVE-HOUSE-TYPE-0007.
-               PERFORM DERIVE-NCD-YEARS-0008.
+               PERFORM CALL-ZAG01F2Z-001.
+               PERFORM CALL-ZAC01HCN-002.
+               PERFORM CALL-ZAG01KWO-003.
+               PERFORM CALL-ZAG01S5I-004.
+               PERFORM CALL-ZIF01EMO-005.
+               PERFORM CALL-ZAG01DYJ-006.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -134,101 +133,54 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZAG01DHC-001.
-               CALL 'ZAG01DHC' USING DFHCOMMAREA
+       CALL-ZAG01F2Z-001.
+               CALL 'ZAG01F2Z' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01DHC FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01F2Z FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01LK6-002.
-               CALL 'ZAG01LK6' USING DFHCOMMAREA
+       CALL-ZAC01HCN-002.
+               CALL 'ZAC01HCN' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01LK6 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAC01HCN FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01SN6-003.
-               CALL 'ZAG01SN6' USING DFHCOMMAREA
+       CALL-ZAG01KWO-003.
+               CALL 'ZAG01KWO' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01SN6 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01KWO FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG0125U-004.
-               CALL 'ZAG0125U' USING DFHCOMMAREA
+       CALL-ZAG01S5I-004.
+               CALL 'ZAG01S5I' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG0125U FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01S5I FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       FORMAT-HOUSE-TYPE-0001.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
+       CALL-ZIF01EMO-005.
+               CALL 'ZIF01EMO' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZIF01EMO FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       NORMALISE-MANAGED-FUND-0002.
-               MOVE 'MANAGED-FU' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       COMPUTE-POSTCODE-0003.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 11
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       RECONCILE-EQUITIES-0004.
-               MOVE 'EQUITIES' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       COMPUTE-NCD-YEARS-0005.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
+       CALL-ZAG01DYJ-006.
+               MOVE 'ZAG01DYJ' TO WS-SUBNAME-4
+               CALL WS-SUBNAME-4 USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZAG01DYJ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       REFRESH-NCD-YEARS-0006.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       DERIVE-HOUSE-TYPE-0007.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       DERIVE-NCD-YEARS-0008.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

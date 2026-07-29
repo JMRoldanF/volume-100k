@@ -86,20 +86,16 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
                 05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01FK5              PIC X(8) VALUE 'ZMT01FK5'.
-       01  MOD-ZMT01DTN              PIC X(8) VALUE 'ZMT01DTN'.
-       01  MOD-ZMT01L6D              PIC X(8) VALUE 'ZMT01L6D'.
-       01  MOD-ZPA00ZU9              PIC X(8) VALUE 'ZPA00ZU9'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-3              PIC X(8) VALUE SPACES.
+       01  MOD-ZMT01SUT              PIC X(8) VALUE 'ZMT01SUT'.
+       01  MOD-ZMT01SD5              PIC X(8) VALUE 'ZMT01SD5'.
+       01  MOD-ZMT01SU5              PIC X(8) VALUE 'ZMT01SU5'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -114,11 +110,13 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZMT01FJB-001.
-               PERFORM CALL-ZMT01FK5-002.
-               PERFORM CALL-ZMT01DTN-003.
-               PERFORM CALL-ZMT01L6D-004.
-               PERFORM CALL-ZPA00ZU9-005.
+               PERFORM CALL-ZMT01SUT-001.
+               PERFORM CALL-ZMT01SD5-002.
+               PERFORM CALL-ZMT01SU5-003.
+               PERFORM COMPUTE-WITH-PROFITS-0001.
+               PERFORM RESOLVE-SUM-ASSURED-0002.
+               PERFORM RECONCILE-MODEL-0003.
+               PERFORM EXPAND-ROOF-TYPE-0004.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -131,45 +129,69 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZMT01FJB-001.
-               MOVE 'ZMT01FJB' TO WS-SUBNAME-3
-               CALL WS-SUBNAME-3 USING DFHCOMMAREA
+       CALL-ZMT01SUT-001.
+               CALL 'ZMT01SUT' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01FJB FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01SUT FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01FK5-002.
-               CALL 'ZMT01FK5' USING DFHCOMMAREA
+       CALL-ZMT01SD5-002.
+               CALL 'ZMT01SD5' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01FK5 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01SD5 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01DTN-003.
-               CALL 'ZMT01DTN' USING DFHCOMMAREA
+       CALL-ZMT01SU5-003.
+               CALL 'ZMT01SU5' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01DTN FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01SU5 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01L6D-004.
-               CALL 'ZMT01L6D' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01L6D FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       COMPUTE-WITH-PROFITS-0001.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
       *----------------------------------------------------------------*
-       CALL-ZPA00ZU9-005.
-               CALL 'ZPA00ZU9' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA00ZU9 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
+       RESOLVE-SUM-ASSURED-0002.
+               MOVE 'SUM-ASSURE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       RECONCILE-MODEL-0003.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       EXPAND-ROOF-TYPE-0004.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       EXPAND-TAX-BAND-0005.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO TAX-BAND' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

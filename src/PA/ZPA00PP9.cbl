@@ -56,14 +56,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZPA01EIB              PIC X(8) VALUE 'ZPA01EIB'.
+       01  MOD-ZHO0255M              PIC X(8) VALUE 'ZHO0255M'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -83,8 +83,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKPA0045.
-               COPY ZKPA0037.
+               COPY ZKPA0008.
+               COPY ZKPA0048.
+               COPY ZKPA0055.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -103,14 +104,17 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZPA01EIB-001.
+               PERFORM CALL-ZHO0255M-001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZPA01EIB-001.
-               CALL 'ZPA01EIB' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
+       CALL-ZHO0255M-001.
+               EXEC CICS LINK PROGRAM('ZHO0255M')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01EIB FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO0255M FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

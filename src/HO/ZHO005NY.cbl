@@ -56,19 +56,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-CC-RATING      PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
                 05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN00C7J              PIC X(8) VALUE 'ZEN00C7J'.
-       01  MOD-ZHO00F2A              PIC X(8) VALUE 'ZHO00F2A'.
-       01  MOD-ZHO0255M              PIC X(8) VALUE 'ZHO0255M'.
+       01  MOD-ZHO00DKU              PIC X(8) VALUE 'ZHO00DKU'.
+       01  MOD-ZHO00CY8              PIC X(8) VALUE 'ZHO00CY8'.
+
+      * Dynamically resolved module names
+       01  WS-PROGNAME-6             PIC X(8) VALUE SPACES.
 
       * BMS mapset copy
-           COPY ZHOMAP07.
+           COPY ZHOMAP57.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -76,7 +78,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKHO0006.
+               COPY ZKHO0036.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -90,41 +92,41 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGCA')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZEN00C7J-001.
-               PERFORM CALL-ZHO00F2A-002.
+               PERFORM CALL-ZHO00DKU-001.
+               PERFORM CALL-ZHO00CY8-002.
                PERFORM CALL-ZHO0255M-003.
-               PERFORM NORMALISE-ROOF-TYPE-0001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZEN00C7J-001.
-               EXEC CICS LINK PROGRAM('ZEN00C7J')
+       CALL-ZHO00DKU-001.
+               EXEC CICS LINK PROGRAM('ZHO00DKU')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00C7J FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00DKU FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO00F2A-002.
-               EXEC CICS LINK PROGRAM('ZHO00F2A')
+       CALL-ZHO00CY8-002.
+               EXEC CICS LINK PROGRAM('ZHO00CY8')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO00F2A FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00CY8 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
        CALL-ZHO0255M-003.
-               EXEC CICS LINK PROGRAM('ZHO0255M')
+               MOVE 'ZHO0255M' TO WS-PROGNAME-6
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-6)
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
@@ -133,18 +135,6 @@
                   MOVE ' LINK ZHO0255M FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-ROOF-TYPE-0001.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

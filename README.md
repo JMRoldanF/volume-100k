@@ -13,14 +13,15 @@ and no z/OS dependency.
 | | |
 |---|---|
 | Programs | 100,034 (`src/<DOMAIN>/*.cbl`) |
-| Copybooks | 602 (`copybook/<DOMAIN>/*.cpy`) |
-| Source lines | 50,108,020 |
+| Business subsystems | 60 |
+| Source lines | 50,053,186 |
 | Source size | 2.12 GiB |
+| Copybooks | 3,602 (`copybook/<DOMAIN>/*.cpy`) |
 | JCL jobs | 4,334 (`jcl/*.jcl`) |
-| BMS mapsets | 90 (`bms/*.bms`) |
+| BMS mapsets | 1,023 (`bms/*.bms`) |
 | CSD definitions | `cntl/csdvol.txt` (TRANSID → program) |
 | DDL | `ddl/schema.sql` |
-| Ground truth | `manifest.json.gz` (6.6 MiB; 106 MiB uncompressed) |
+| Ground truth | `manifest.json.gz` (7.7 MiB; ~106 MiB uncompressed) |
 
 All files are UTF-8 with LF endings and no BOM. Content is pure ASCII, which is
 a valid UTF-8 subset — there is no multibyte content, so this corpus does not
@@ -28,7 +29,7 @@ exercise a tool's encoding handling.
 
 Program names are 8 characters (`Z` + 2-char domain + 5-char **base-36**
 serial), staying within the z/OS member-name limit at this scale — e.g.
-`ZUW007PS`. Corpora under 100,000 programs use a decimal serial instead.
+`ZTX0256Q`.
 
 ## Ground truth
 
@@ -37,17 +38,18 @@ rather than eyeballed. It ships gzipped because the plain 106 MiB file exceeds
 GitHub's 100 MiB per-file hard limit; Python reads it natively at the same speed,
 so there is nothing to unpack first.
 
-- **277,403 call-graph edges** — 244,323 resolvable from literals, 33,080
+- **277,700 call-graph edges** — 244,484 resolvable from literals, 33,216
   requiring dataflow (`LINK PROGRAM(WS-VAR)`, `CALL` from an `OCCURS` dispatch
   table) or a cross-reference against `cntl/csdvol.txt` (`START TRANSID`)
-- Every edge carries its target, kind, and **the source line of the verb**
-- 300 injected recursion rings, 8 hubs (fan-in 5,846–6,092, then a long tail
-  dropping to 17), max call depth 32
-- 12,334 entry points, 10,664 true orphans (drivers with a TRANSID and JCL jobs
+- Every edge carries its target, kind, **the source line of the verb**, and a
+  `to_hub` flag
+- By kind: 119,542 `CICS_LINK`, 109,121 `CALL_STATIC`, 16,395
+  `CICS_LINK_DYNAMIC`, 14,848 `CALL_DYNAMIC`, 13,000 `JCL_EXEC_PGM`, 2,821
+  `CICS_XCTL`, 1,973 `CICS_START`
+- 300 injected recursion rings, 8 hubs (fan-in ~6,000), max call depth 32
+- 12,334 entry points, 11,326 true orphans (drivers with a TRANSID and JCL jobs
   are excluded — they are entry points by design, not dead code)
 - Per-program dead paragraphs, copybook fan-in (`ZKCOMMON` is copied 87,034×)
-
-Score with:
 
 ```python
 import gzip, json
@@ -58,29 +60,64 @@ print("recall   ", len(actual & expected) / len(expected))
 print("precision", len(actual & expected) / len(actual))
 ```
 
-Use `expected_graph.cycles` (Tarjan over the emitted source) as the cycle
-ground truth, not `injected.cycles` — the former is what the corpus actually
-contains, the latter only what the generator was asked to inject.
+Use `expected_graph.cycles` (Tarjan over the emitted source) as the cycle ground
+truth, not `injected.cycles` — the former is what the corpus actually contains
+(310 strongly connected components, the 300 injected rings plus 10 that emerge
+from random subroutine-to-subroutine edges), the latter only what the generator
+was asked to inject.
+
+## Domain coupling
+
+Cross-domain calls are restricted to a small per-domain partner set, and domain
+sizes follow a long tail. `expected_graph.coupling` reports the structure:
+
+| | |
+|---|---|
+| Possible domain pairs | 1,770 |
+| Connected, including hub edges | 597 (33.7%) |
+| **Connected, excluding hub edges** | **251 (14.2%)** |
+| Heaviest : lightest pair | 906 : 1 |
+| Largest : smallest domain | 9,065 : 779 |
+| Intra- / inter-domain edges | 175,597 / 89,103 |
+
+**Score subsystem coupling and clustering against `density_excluding_hubs`.**
+The 8 shared utilities are called from every domain by design — that is the
+`LGSTSQ` pattern from real GenApp, where all 31 programs link to one error
+handler — so including their 47,884 edges makes the coupling graph look far more
+connected than the business coupling actually is. Whether a tool distinguishes
+shared infrastructure from genuine subsystem coupling is itself worth measuring;
+the `to_hub` flag on every edge lets you check.
+
+Long chains and recursion rings are built inside a single domain, so neither
+inflates the coupling graph.
 
 ## Context window
 
 Every program fits a **200,000-token** window — see `window_cap` in the
 manifest. Generated with `--fit-window`, so the corpus contains **no
-over-window program**: the largest file is 12,082 lines (~546 KB, 94% of the
-budget). Regenerate without that flag to get the over-window cases back once a
-fallback path exists.
+over-window program**.
 
-The budget assumes **3.4 characters per token**, which is a placeholder, not a
-measured value. Measure it on this corpus with `count_tokens` before relying on
-the cap.
+The budget uses **3.63 characters per token**, which is measured, not assumed:
+counted against `anthropic.claude-haiku-4-5-20251001-v1:0` on Bedrock over the
+largest programs in this corpus together with their copybook closures. Verified
+after generation — the largest file, `ZTX0256Q`, is 12,900 lines and 586,952
+characters, counting **161,589 tokens** against a 170,000-token usable budget
+(200,000 less a 15% reserve for prompt and output), so 5% headroom. That is what
+the `0.95×` boundary multiple is meant to mean.
 
-## Known coarseness at this scale
+Re-measure before trusting this for a different model — the ratio is
+tokenizer-specific:
 
-- **10 business domains**, so ~10,000 programs per domain. Real estates of this
-  size have finer subsystem granularity; same-domain call preference still
-  produces clustering, but the clusters are large.
-- **90 BMS mapsets** shared across ~8,000 online drivers. Mapset sharing is
-  realistic, but the count does not scale with the estate.
+```sh
+python3 ../genapp/tools/genvol/measure_ratio.py . \
+    --provider bedrock-native --aws-region eu-north-1 \
+    --model anthropic.claude-haiku-4-5-20251001-v1:0
+```
+
+Regenerate without `--fit-window` to get the over-window cases back — the
+~20,000-line giant and the 1.02× / 1.15× / 1.5× / 2.0× boundary cohort — once a
+fallback path for oversized files exists. The `1.02×` case is the one that
+actually exercises a routing decision.
 
 ## Deliberately hostile cases
 
@@ -93,13 +130,13 @@ program with no callers; and the same `PROGRAM-ID` in two directories
 
 ## Regenerating
 
-Output is deterministic for a given seed. Takes ~18 s.
+Output is deterministic for a given seed. Takes ~21 s.
 
 ```sh
 python3 ../genapp/tools/genvol/genvol.py \
-  -n 100000 --copybooks-per-domain 60 --boundary 24 \
-  --chains 120 --chain-depth 20 --cycles 300 --hubs 8 \
-  --fit-window --window-tokens 200000 --chars-per-token 3.4 \
+  -n 100000 --domains 60 --partners 2 5 --copybooks-per-domain 60 \
+  --boundary 24 --chains 120 --chain-depth 20 --cycles 300 --hubs 8 \
+  --fit-window --window-tokens 200000 --chars-per-token 3.63 \
   --gzip-manifest --seed 20260729 -o .
 ```
 

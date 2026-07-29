@@ -56,20 +56,23 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
                 05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZUW00GPO              PIC X(8) VALUE 'ZUW00GPO'.
-       01  MOD-ZPA00919              PIC X(8) VALUE 'ZPA00919'.
-       01  MOD-ZPA00B3Z              PIC X(8) VALUE 'ZPA00B3Z'.
-       01  MOD-ZPA00757              PIC X(8) VALUE 'ZPA00757'.
+       01  MOD-ZPA00AE4              PIC X(8) VALUE 'ZPA00AE4'.
+       01  MOD-ZPA00I9N              PIC X(8) VALUE 'ZPA00I9N'.
+       01  MOD-ZPA00C0S              PIC X(8) VALUE 'ZPA00C0S'.
+       01  MOD-ZPA00F82              PIC X(8) VALUE 'ZPA00F82'.
+       01  MOD-ZPA00CG9              PIC X(8) VALUE 'ZPA00CG9'.
+       01  MOD-ZPA0015T              PIC X(8) VALUE 'ZPA0015T'.
+       01  MOD-ZHO0255M              PIC X(8) VALUE 'ZHO0255M'.
 
       * BMS mapset copy
-           COPY ZPAMAP03.
+           COPY ZPAMAP13.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -77,7 +80,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKPA0052.
+               COPY ZKPA0059.
+               COPY ZKPA0023.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -91,120 +95,248 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZUW00GPO-001.
-               PERFORM CALL-ZPA00919-002.
-               PERFORM CALL-ZPA00B3Z-003.
-               PERFORM CALL-ZPA00757-004.
-               PERFORM EXPAND-NCD-YEARS-0001.
-               PERFORM VALIDATE-MODEL-0002.
-               PERFORM EXPAND-POSTCODE-0003.
-               PERFORM APPLY-EQUITIES-0004.
-               PERFORM AUDIT-VALUE-0005.
+               PERFORM CALL-ZPA00AE4-001.
+               PERFORM CALL-ZPA00I9N-002.
+               PERFORM CALL-ZPA00C0S-003.
+               PERFORM CALL-ZPA00F82-004.
+               PERFORM CALL-ZPA00CG9-005.
+               PERFORM CALL-ZPA0015T-006.
+               PERFORM CALL-ZHO0255M-007.
+               PERFORM NORMALISE-SUM-ASSURED-0001.
+               PERFORM APPLY-NCD-YEARS-0002.
+               PERFORM NORMALISE-ROOF-TYPE-0003.
+               PERFORM VALIDATE-TAX-BAND-0004.
+               PERFORM RECONCILE-EXCESS-0005.
+               PERFORM DERIVE-MODEL-0006.
                PERFORM SEND-RECEIVE-MAP-0007.
-               PERFORM VALIDATE-NCD-YEARS-0008.
-               PERFORM RECONCILE-ROOF-TYPE-0009.
-               PERFORM RECONCILE-COLOUR-0011.
-               PERFORM NORMALISE-HOUSE-TYPE-0012.
-               PERFORM FORMAT-ROOF-TYPE-0013.
+               PERFORM REFRESH-AGENT-CODE-0008.
+               PERFORM EXPAND-MAKE-0009.
+               PERFORM CHECK-MODEL-0010.
+               PERFORM EXPAND-HOUSE-TYPE-0011.
+               PERFORM FORMAT-STATUS-CODE-0012.
+               PERFORM VALIDATE-AGENT-CODE-0013.
                PERFORM SEND-RECEIVE-MAP-0014.
-               PERFORM CHECK-TAX-BAND-0015.
-               PERFORM VALIDATE-MAKE-0016.
-               PERFORM APPLY-REG-NUMBER-0017.
-               PERFORM AUDIT-EXCESS-0018.
-               PERFORM NORMALISE-REG-NUMBER-0019.
-               PERFORM CHECK-CC-RATING-0020.
+               PERFORM COMPUTE-NCD-YEARS-0016.
+               PERFORM RECONCILE-ROOF-TYPE-0018.
+               PERFORM FORMAT-VALUE-0019.
+               PERFORM DERIVE-SUM-ASSURED-0020.
                PERFORM SEND-RECEIVE-MAP-0021.
-               PERFORM FORMAT-TERM-0022.
-               PERFORM DERIVE-BROKER-ID-0023.
-               PERFORM RESOLVE-BROKER-ID-0024.
-               PERFORM AUDIT-EQUITIES-0025.
-               PERFORM RESOLVE-VALUE-0026.
-               PERFORM EXPAND-EQUITIES-0027.
-               PERFORM SEND-RECEIVE-MAP-0028.
-               PERFORM EXPAND-STATUS-CODE-0029.
-               PERFORM REFRESH-EQUITIES-0030.
-               PERFORM FORMAT-BROKER-ID-0032.
-               PERFORM NORMALISE-MAKE-0033.
-               PERFORM EXPAND-COLOUR-0034.
-               PERFORM SEND-RECEIVE-MAP-0035.
-               PERFORM APPLY-WITH-PROFITS-0036.
-               PERFORM COMPUTE-BROKER-ID-0037.
-               PERFORM CHECK-POSTCODE-0038.
-               PERFORM RECONCILE-WITH-PROFITS-0039.
-               PERFORM NORMALISE-TAX-BAND-0040.
+               PERFORM COMPUTE-VALUE-0022.
+               PERFORM APPLY-EXCESS-0023.
+               PERFORM RESOLVE-HOUSE-TYPE-0024.
+               PERFORM CHECK-TAX-BAND-0025.
+               PERFORM NORMALISE-ROOF-TYPE-0026.
+               PERFORM CHECK-EXCESS-0027.
+               PERFORM FORMAT-REG-NUMBER-0029.
+               PERFORM DERIVE-EQUITIES-0030.
+               PERFORM NORMALISE-WITH-PROFITS-0031.
+               PERFORM AUDIT-TERM-0032.
+               PERFORM NORMALISE-ROOF-TYPE-0033.
+               PERFORM AUDIT-BEDROOMS-0034.
+               PERFORM NORMALISE-VALUE-0036.
+               PERFORM AUDIT-TERM-0037.
+               PERFORM DERIVE-BROKER-ID-0038.
+               PERFORM COMPUTE-MANAGED-FUND-0039.
+               PERFORM NORMALISE-BEDROOMS-0040.
+               PERFORM EXPAND-VALUE-0041.
+               PERFORM SEND-RECEIVE-MAP-0042.
+               PERFORM FORMAT-AGENT-CODE-0043.
+               PERFORM COMPUTE-SUM-ASSURED-0044.
+               PERFORM NORMALISE-HOUSE-TYPE-0045.
+               PERFORM COMPUTE-TAX-BAND-0046.
+               PERFORM FORMAT-EQUITIES-0047.
+               PERFORM COMPUTE-EXCESS-0048.
+               PERFORM SEND-RECEIVE-MAP-0049.
+               PERFORM CHECK-CC-RATING-0050.
+               PERFORM NORMALISE-TAX-BAND-0051.
+               PERFORM RESOLVE-COLOUR-0052.
+               PERFORM APPLY-REG-NUMBER-0053.
+               PERFORM DERIVE-MODEL-0054.
+               PERFORM FORMAT-MODEL-0055.
+               PERFORM SEND-RECEIVE-MAP-0056.
+               PERFORM RESOLVE-VALUE-0057.
+               PERFORM CHECK-PREMIUM-0058.
+               PERFORM NORMALISE-POSTCODE-0059.
+               PERFORM APPLY-NCD-YEARS-0060.
+               PERFORM DERIVE-NCD-YEARS-0061.
+               PERFORM RESOLVE-EXCESS-0062.
+               PERFORM SEND-RECEIVE-MAP-0063.
+               PERFORM EXPAND-TERM-0064.
+               PERFORM CHECK-BEDROOMS-0066.
+               PERFORM VALIDATE-EQUITIES-0067.
+               PERFORM DERIVE-MODEL-0068.
+               PERFORM AUDIT-COLOUR-0069.
+               PERFORM SEND-RECEIVE-MAP-0070.
+               PERFORM RESOLVE-PREMIUM-0071.
+               PERFORM FORMAT-BEDROOMS-0072.
+               PERFORM RESOLVE-TERM-0073.
+               PERFORM COMPUTE-MAKE-0074.
+               PERFORM CHECK-PREMIUM-0075.
+               PERFORM REFRESH-POSTCODE-0076.
+               PERFORM SEND-RECEIVE-MAP-0077.
+               PERFORM RECONCILE-TERM-0078.
+               PERFORM DERIVE-SUM-ASSURED-0079.
+               PERFORM EXPAND-WITH-PROFITS-0080.
+               PERFORM CHECK-STATUS-CODE-0081.
+               PERFORM VALIDATE-PREMIUM-0082.
+               PERFORM EXPAND-BEDROOMS-0083.
+               PERFORM CHECK-TAX-BAND-0085.
+               PERFORM APPLY-COLOUR-0086.
+               PERFORM RECONCILE-ROOF-TYPE-0087.
+               PERFORM VALIDATE-HOUSE-TYPE-0088.
+               PERFORM CHECK-SUM-ASSURED-0089.
+               PERFORM REFRESH-VALUE-0090.
+               PERFORM SEND-RECEIVE-MAP-0091.
+               PERFORM APPLY-AGENT-CODE-0092.
+               PERFORM RESOLVE-BROKER-ID-0093.
+               PERFORM CHECK-HOUSE-TYPE-0094.
+               PERFORM VALIDATE-POSTCODE-0095.
+               PERFORM APPLY-AGENT-CODE-0096.
+               PERFORM REFRESH-HOUSE-TYPE-0097.
+               PERFORM DERIVE-EXCESS-0099.
+               PERFORM VALIDATE-SUM-ASSURED-0100.
+               PERFORM REFRESH-VALUE-0101.
+               PERFORM APPLY-ROOF-TYPE-0102.
+               PERFORM RECONCILE-TAX-BAND-0103.
+               PERFORM RESOLVE-MODEL-0104.
+               PERFORM SEND-RECEIVE-MAP-0105.
+               PERFORM RECONCILE-TAX-BAND-0106.
+               PERFORM VALIDATE-EXCESS-0107.
+               PERFORM CHECK-SUM-ASSURED-0108.
+               PERFORM VALIDATE-NCD-YEARS-0109.
+               PERFORM VALIDATE-COLOUR-0110.
+               PERFORM COMPUTE-BEDROOMS-0111.
+               PERFORM SEND-RECEIVE-MAP-0112.
+               PERFORM NORMALISE-HOUSE-TYPE-0113.
+               PERFORM RESOLVE-STATUS-CODE-0114.
+               PERFORM FORMAT-PREMIUM-0115.
+               PERFORM REFRESH-TERM-0116.
+               PERFORM REFRESH-TERM-0117.
+               PERFORM SEND-RECEIVE-MAP-0119.
+               PERFORM NORMALISE-TERM-0120.
+               PERFORM RECONCILE-AGENT-CODE-0122.
+               PERFORM VALIDATE-STATUS-CODE-0123.
+               PERFORM FORMAT-EQUITIES-0124.
+               PERFORM AUDIT-BROKER-ID-0125.
+               PERFORM SEND-RECEIVE-MAP-0126.
+               PERFORM VALIDATE-AGENT-CODE-0128.
+               PERFORM DERIVE-MAKE-0129.
+               PERFORM REFRESH-CC-RATING-0131.
+               PERFORM NORMALISE-AGENT-CODE-0132.
+               PERFORM SEND-RECEIVE-MAP-0133.
+               PERFORM DERIVE-ROOF-TYPE-0134.
+               PERFORM EXPAND-NCD-YEARS-0135.
+               PERFORM VALIDATE-CC-RATING-0136.
+               PERFORM FORMAT-MANAGED-FUND-0137.
+               PERFORM NORMALISE-NCD-YEARS-0138.
+               PERFORM EXPAND-TAX-BAND-0139.
+               PERFORM SEND-RECEIVE-MAP-0140.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZUW00GPO-001.
-               EXEC CICS LINK PROGRAM('ZUW00GPO')
+       CALL-ZPA00AE4-001.
+               EXEC CICS LINK PROGRAM('ZPA00AE4')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW00GPO FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00AE4 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA00919-002.
-               EXEC CICS LINK PROGRAM('ZPA00919')
+       CALL-ZPA00I9N-002.
+               EXEC CICS LINK PROGRAM('ZPA00I9N')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA00919 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00I9N FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA00B3Z-003.
-               EXEC CICS LINK PROGRAM('ZPA00B3Z')
+       CALL-ZPA00C0S-003.
+               EXEC CICS LINK PROGRAM('ZPA00C0S')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA00B3Z FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00C0S FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA00757-004.
-               EXEC CICS LINK PROGRAM('ZPA00757')
+       CALL-ZPA00F82-004.
+               EXEC CICS LINK PROGRAM('ZPA00F82')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA00757 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00F82 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-NCD-YEARS-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
+       CALL-ZPA00CG9-005.
+               EXEC CICS LINK PROGRAM('ZPA00CG9')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZPA00CG9 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-MODEL-0002.
+       CALL-ZPA0015T-006.
+               EXEC CICS XCTL PROGRAM('ZPA0015T')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZPA0015T FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZHO0255M-007.
+               EXEC CICS LINK PROGRAM('ZHO0255M')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZHO0255M FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-SUM-ASSURED-0001.
                INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
                IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-POSTCODE-0003.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
+       APPLY-NCD-YEARS-0002.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO NCD-YEARS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       APPLY-EQUITIES-0004.
+       NORMALISE-ROOF-TYPE-0003.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       VALIDATE-TAX-BAND-0004.
                EVALUATE TRUE
                   WHEN WS-PREMIUM-TOTAL < 999
                        MOVE 1 TO WS-PREMIUM-BAND
@@ -216,225 +348,7 @@
                        MOVE 9 TO WS-PREMIUM-BAND
                END-EVALUATE.
       *----------------------------------------------------------------*
-       AUDIT-VALUE-0005.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       VALIDATE-REG-NUMBER-0006.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0007.
-               EXEC CICS SEND MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         ERASE
-                         RESP(WS-RESP)
-               END-EXEC.
-               EXEC CICS RECEIVE MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         RESP(WS-RESP)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       VALIDATE-NCD-YEARS-0008.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RECONCILE-ROOF-TYPE-0009.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO ROOF-TYPE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       EXPAND-WITH-PROFITS-0010.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       RECONCILE-COLOUR-0011.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       NORMALISE-HOUSE-TYPE-0012.
-               MOVE 'HOUSE-TYPE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       FORMAT-ROOF-TYPE-0013.
-               MOVE 'ROOF-TYPE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0014.
-               EXEC CICS SEND MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         ERASE
-                         RESP(WS-RESP)
-               END-EXEC.
-               EXEC CICS RECEIVE MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         RESP(WS-RESP)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       CHECK-TAX-BAND-0015.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       VALIDATE-MAKE-0016.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       APPLY-REG-NUMBER-0017.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-EXCESS-0018.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       NORMALISE-REG-NUMBER-0019.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       CHECK-CC-RATING-0020.
-               MOVE 'CC-RATING' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0021.
-               EXEC CICS SEND MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         ERASE
-                         RESP(WS-RESP)
-               END-EXEC.
-               EXEC CICS RECEIVE MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         RESP(WS-RESP)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       FORMAT-TERM-0022.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-BROKER-ID-0023.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       RESOLVE-BROKER-ID-0024.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       AUDIT-EQUITIES-0025.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 2
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       RESOLVE-VALUE-0026.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-EQUITIES-0027.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0028.
-               EXEC CICS SEND MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         ERASE
-                         RESP(WS-RESP)
-               END-EXEC.
-               EXEC CICS RECEIVE MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
-                         RESP(WS-RESP)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-STATUS-CODE-0029.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       REFRESH-EQUITIES-0030.
-               MOVE 'EQUITIES' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       CHECK-MANAGED-FUND-0031.
+       RECONCILE-EXCESS-0005.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
                          + WS-T-AMOUNT(WS-SUB) / 11
@@ -443,15 +357,46 @@
                   MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       FORMAT-BROKER-ID-0032.
-               MOVE 'BROKER-ID' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
+       DERIVE-MODEL-0006.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
       *----------------------------------------------------------------*
-       NORMALISE-MAKE-0033.
+       SEND-RECEIVE-MAP-0007.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       REFRESH-AGENT-CODE-0008.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       EXPAND-MAKE-0009.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       CHECK-MODEL-0010.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       EXPAND-HOUSE-TYPE-0011.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -460,7 +405,195 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       EXPAND-COLOUR-0034.
+       FORMAT-STATUS-CODE-0012.
+               MOVE 'STATUS-COD' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       VALIDATE-AGENT-CODE-0013.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0014.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       EXPAND-STATUS-CODE-0015.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       COMPUTE-NCD-YEARS-0016.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO NCD-YEARS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       RESOLVE-MODEL-0017.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MODEL' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       RECONCILE-ROOF-TYPE-0018.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 10
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-VALUE-0019.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       DERIVE-SUM-ASSURED-0020.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO SUM-ASSURED' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0021.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       COMPUTE-VALUE-0022.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO VALUE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       APPLY-EXCESS-0023.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 2
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       RESOLVE-HOUSE-TYPE-0024.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-TAX-BAND-0025.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-ROOF-TYPE-0026.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CHECK-EXCESS-0027.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0028.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-REG-NUMBER-0029.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-EQUITIES-0030.
+               MOVE 'EQUITIES' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       NORMALISE-WITH-PROFITS-0031.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       AUDIT-TERM-0032.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 12
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-ROOF-TYPE-0033.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       AUDIT-BEDROOMS-0034.
                MOVE SPACES TO WS-KEY-CHAR.
                STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
                          '/'              DELIMITED BY SIZE
@@ -469,49 +602,29 @@
                END-STRING.
       *----------------------------------------------------------------*
        SEND-RECEIVE-MAP-0035.
-               EXEC CICS SEND MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
                          ERASE
                          RESP(WS-RESP)
                END-EXEC.
-               EXEC CICS RECEIVE MAP('ZPAMAP0I')
-                         MAPSET('ZPAMAP03')
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
                          RESP(WS-RESP)
                END-EXEC.
       *----------------------------------------------------------------*
-       APPLY-WITH-PROFITS-0036.
-               MOVE 'WITH-PROFI' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
+       NORMALISE-VALUE-0036.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
       *----------------------------------------------------------------*
-       COMPUTE-BROKER-ID-0037.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       CHECK-POSTCODE-0038.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       RECONCILE-WITH-PROFITS-0039.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO WITH-PROFITS' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-TAX-BAND-0040.
+       AUDIT-TERM-0037.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -519,6 +632,873 @@
                      ADD 1 TO WS-ENTRY-COUNT
                   END-IF
                END-PERFORM.
+      *----------------------------------------------------------------*
+       DERIVE-BROKER-ID-0038.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       COMPUTE-MANAGED-FUND-0039.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       NORMALISE-BEDROOMS-0040.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 7
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-VALUE-0041.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0042.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-AGENT-CODE-0043.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 2
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-SUM-ASSURED-0044.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       NORMALISE-HOUSE-TYPE-0045.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-TAX-BAND-0046.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       FORMAT-EQUITIES-0047.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       COMPUTE-EXCESS-0048.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0049.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-CC-RATING-0050.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       NORMALISE-TAX-BAND-0051.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       RESOLVE-COLOUR-0052.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       APPLY-REG-NUMBER-0053.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO REG-NUMBER' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-MODEL-0054.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       FORMAT-MODEL-0055.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0056.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-VALUE-0057.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       CHECK-PREMIUM-0058.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO PREMIUM' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-POSTCODE-0059.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       APPLY-NCD-YEARS-0060.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-NCD-YEARS-0061.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       RESOLVE-EXCESS-0062.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0063.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       EXPAND-TERM-0064.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-COLOUR-0065.
+               MOVE 'COLOUR' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       CHECK-BEDROOMS-0066.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       VALIDATE-EQUITIES-0067.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       DERIVE-MODEL-0068.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       AUDIT-COLOUR-0069.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0070.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-PREMIUM-0071.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO PREMIUM' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-BEDROOMS-0072.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       RESOLVE-TERM-0073.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 5
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-MAKE-0074.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       CHECK-PREMIUM-0075.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO PREMIUM' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       REFRESH-POSTCODE-0076.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0077.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RECONCILE-TERM-0078.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-SUM-ASSURED-0079.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-WITH-PROFITS-0080.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-STATUS-CODE-0081.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       VALIDATE-PREMIUM-0082.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       EXPAND-BEDROOMS-0083.
+               MOVE 'BEDROOMS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0084.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-TAX-BAND-0085.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       APPLY-COLOUR-0086.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       RECONCILE-ROOF-TYPE-0087.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       VALIDATE-HOUSE-TYPE-0088.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       CHECK-SUM-ASSURED-0089.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       REFRESH-VALUE-0090.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0091.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       APPLY-AGENT-CODE-0092.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       RESOLVE-BROKER-ID-0093.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CHECK-HOUSE-TYPE-0094.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO HOUSE-TYPE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       VALIDATE-POSTCODE-0095.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       APPLY-AGENT-CODE-0096.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       REFRESH-HOUSE-TYPE-0097.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO HOUSE-TYPE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0098.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-EXCESS-0099.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       VALIDATE-SUM-ASSURED-0100.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       REFRESH-VALUE-0101.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       APPLY-ROOF-TYPE-0102.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       RECONCILE-TAX-BAND-0103.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-MODEL-0104.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MODEL' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0105.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RECONCILE-TAX-BAND-0106.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       VALIDATE-EXCESS-0107.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       CHECK-SUM-ASSURED-0108.
+               MOVE 'SUM-ASSURE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       VALIDATE-NCD-YEARS-0109.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       VALIDATE-COLOUR-0110.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       COMPUTE-BEDROOMS-0111.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0112.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-HOUSE-TYPE-0113.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 2
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       RESOLVE-STATUS-CODE-0114.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       FORMAT-PREMIUM-0115.
+               MOVE 'PREMIUM' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       REFRESH-TERM-0116.
+               MOVE 'TERM' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       REFRESH-TERM-0117.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       EXPAND-MAKE-0118.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MAKE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0119.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       NORMALISE-TERM-0120.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-BROKER-ID-0121.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       RECONCILE-AGENT-CODE-0122.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       VALIDATE-STATUS-CODE-0123.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-EQUITIES-0124.
+               MOVE 'EQUITIES' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       AUDIT-BROKER-ID-0125.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0126.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-COLOUR-0127.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       VALIDATE-AGENT-CODE-0128.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 7
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-MAKE-0129.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       VALIDATE-MANAGED-FUND-0130.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       REFRESH-CC-RATING-0131.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       NORMALISE-AGENT-CODE-0132.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO AGENT-CODE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0133.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-ROOF-TYPE-0134.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       EXPAND-NCD-YEARS-0135.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       VALIDATE-CC-RATING-0136.
+               MOVE 'CC-RATING' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       FORMAT-MANAGED-FUND-0137.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-NCD-YEARS-0138.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       EXPAND-TAX-BAND-0139.
+               MOVE 'TAX-BAND' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0140.
+               EXEC CICS SEND MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZPAMAP1I')
+                         MAPSET('ZPAMAP13')
+                         RESP(WS-RESP)
+               END-EXEC.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

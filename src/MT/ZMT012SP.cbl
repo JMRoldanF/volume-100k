@@ -56,19 +56,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-EXCESS         PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-HOUSE-TYPE     PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01H5X              PIC X(8) VALUE 'ZMT01H5X'.
-       01  MOD-ZMT01QQN              PIC X(8) VALUE 'ZMT01QQN'.
+       01  MOD-ZRN01KIH              PIC X(8) VALUE 'ZRN01KIH'.
        01  MOD-ZEN0255N              PIC X(8) VALUE 'ZEN0255N'.
 
       * VSAM record areas
-       01  KSDSMT56-REC.
+       01  KSDSMT45-REC.
              03 REC-KEY                PIC 9(10).
              03 REC-CUSTOMER           PIC 9(10).
              03 REC-DATA               PIC X(160).
@@ -80,9 +79,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0043.
-               COPY ZKMT0044.
-               COPY ZKMT0008.
+               COPY ZKMT0027.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -101,30 +98,23 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZMT01H5X-001.
-               PERFORM CALL-ZMT01QQN-002.
-               PERFORM CALL-ZEN0255N-003.
-               PERFORM REFRESH-VALUE-0001.
-               PERFORM DERIVE-REG-NUMBER-0002.
+               PERFORM CALL-ZRN01KIH-001.
+               PERFORM CALL-ZEN0255N-002.
+               PERFORM NORMALISE-MODEL-0002.
+               PERFORM FILE-ACCESS-0003.
+               PERFORM REFRESH-TERM-0004.
+               PERFORM RECONCILE-PREMIUM-0005.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZMT01H5X-001.
-               CALL 'ZMT01H5X' USING DFHCOMMAREA
+       CALL-ZRN01KIH-001.
+               CALL 'ZRN01KIH' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01H5X FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRN01KIH FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01QQN-002.
-               CALL 'ZMT01QQN' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01QQN FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZEN0255N-003.
+       CALL-ZEN0255N-002.
                EXEC CICS LINK PROGRAM('ZEN0255N')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
@@ -135,7 +125,7 @@
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       REFRESH-VALUE-0001.
+       APPLY-BEDROOMS-0001.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -144,14 +134,44 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       DERIVE-REG-NUMBER-0002.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 3
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+       NORMALISE-MODEL-0002.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MODEL' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
+      *----------------------------------------------------------------*
+       FILE-ACCESS-0003.
+               EXEC CICS REWRITE FILE('KSDSMT45')
+                         FROM(KSDSMT45-REC)
+                         LENGTH(WS-FILE-LEN)
+                         RIDFLD(WS-KEY-AREA)
+                         RESP(WS-RESP)
+               END-EXEC.
+               EVALUATE WS-RESP
+                  WHEN DFHRESP(NORMAL)
+                       MOVE '00' TO WS-STATUS-CODE
+                  WHEN DFHRESP(NOTFND)
+                       MOVE '01' TO WS-STATUS-CODE
+                  WHEN DFHRESP(DUPREC)
+                       MOVE '02' TO WS-STATUS-CODE
+                  WHEN OTHER
+                       MOVE '90' TO WS-STATUS-CODE
+                       PERFORM WRITE-ERROR-MESSAGE
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       REFRESH-TERM-0004.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       RECONCILE-PREMIUM-0005.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

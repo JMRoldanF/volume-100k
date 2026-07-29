@@ -56,18 +56,19 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZRE00SUT              PIC X(8) VALUE 'ZRE00SUT'.
-       01  MOD-ZBI00YTS              PIC X(8) VALUE 'ZBI00YTS'.
-       01  MOD-ZPA014IV              PIC X(8) VALUE 'ZPA014IV'.
-       01  MOD-ZPA01TVN              PIC X(8) VALUE 'ZPA01TVN'.
-       01  MOD-ZCU0255O              PIC X(8) VALUE 'ZCU0255O'.
+       01  MOD-ZPA00Y4R              PIC X(8) VALUE 'ZPA00Y4R'.
+       01  MOD-ZPA00QRL              PIC X(8) VALUE 'ZPA00QRL'.
+       01  MOD-ZPA01ADW              PIC X(8) VALUE 'ZPA01ADW'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-2              PIC X(8) VALUE SPACES.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -75,9 +76,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKPA0052.
-               COPY ZKPA0058.
-               COPY ZKPA0046.
+               COPY ZKPA0028.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -91,87 +90,57 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGTS')
+                  EXEC CICS ABEND ABCODE('LGRC')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZRE00SUT-001.
-               PERFORM CALL-ZBI00YTS-002.
-               PERFORM CALL-ZPA01TVN-004.
-               PERFORM CALL-ZCU0255O-005.
-               PERFORM VALIDATE-VALUE-0001.
-               PERFORM FORMAT-PREMIUM-0002.
+               PERFORM CALL-ZPA00Y4R-001.
+               PERFORM CALL-ZPA00QRL-002.
+               PERFORM CALL-ZPA01ADW-003.
+               PERFORM CALL-ZPA01PKT-004.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZRE00SUT-001.
-               EXEC CICS LINK PROGRAM('ZRE00SUT')
+       CALL-ZPA00Y4R-001.
+               EXEC CICS LINK PROGRAM('ZPA00Y4R')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE00SUT FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00Y4R FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI00YTS-002.
-               EXEC CICS LINK PROGRAM('ZBI00YTS')
+       CALL-ZPA00QRL-002.
+               EXEC CICS LINK PROGRAM('ZPA00QRL')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00YTS FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00QRL FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA014IV-003.
-               EXEC CICS LINK PROGRAM('ZPA014IV')
+       CALL-ZPA01ADW-003.
+               EXEC CICS LINK PROGRAM('ZPA01ADW')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA014IV FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01ADW FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01TVN-004.
-               CALL 'ZPA01TVN' USING DFHCOMMAREA
+       CALL-ZPA01PKT-004.
+               MOVE 'ZPA01PKT' TO WS-SUBNAME-2
+               CALL WS-SUBNAME-2 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01TVN FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01PKT FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCU0255O-005.
-               EXEC CICS LINK PROGRAM('ZCU0255O')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU0255O FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       VALIDATE-VALUE-0001.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-PREMIUM-0002.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 3
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

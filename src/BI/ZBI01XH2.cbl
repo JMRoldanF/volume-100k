@@ -86,18 +86,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-CC-RATING      PIC X(12).
-                05 WS-T-HOUSE-TYPE     PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
                 05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZBI01JZQ              PIC X(8) VALUE 'ZBI01JZQ'.
-       01  MOD-ZBI01Q8Q              PIC X(8) VALUE 'ZBI01Q8Q'.
-       01  MOD-ZBI01NJI              PIC X(8) VALUE 'ZBI01NJI'.
-       01  MOD-ZBI01OY2              PIC X(8) VALUE 'ZBI01OY2'.
-       01  MOD-ZBI00YZC              PIC X(8) VALUE 'ZBI00YZC'.
+       01  MOD-ZBI01H2V              PIC X(8) VALUE 'ZBI01H2V'.
+       01  MOD-ZBI01T0P              PIC X(8) VALUE 'ZBI01T0P'.
+       01  MOD-ZBI01LCA              PIC X(8) VALUE 'ZBI01LCA'.
+       01  MOD-ZBI01HW0              PIC X(8) VALUE 'ZBI01HW0'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-5              PIC X(8) VALUE SPACES.
+       01  WS-SUBNAME-6              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -112,14 +115,12 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZBI01JZQ-001.
-               PERFORM CALL-ZBI01Q8Q-002.
-               PERFORM CALL-ZBI01NJI-003.
-               PERFORM CALL-ZBI01OY2-004.
-               PERFORM CALL-ZBI00YZC-005.
-               PERFORM APPLY-MANAGED-FUND-0001.
-               PERFORM RECONCILE-POSTCODE-0002.
-               PERFORM FORMAT-SUM-ASSURED-0003.
+               PERFORM CALL-ZBI01H2V-001.
+               PERFORM CALL-ZBI01SJB-002.
+               PERFORM CALL-ZBI01MKI-003.
+               PERFORM CALL-ZBI01T0P-004.
+               PERFORM CALL-ZBI01LCA-005.
+               PERFORM CALL-ZBI01HW0-006.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -132,79 +133,55 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZBI01JZQ-001.
-               CALL 'ZBI01JZQ' USING DFHCOMMAREA
+       CALL-ZBI01H2V-001.
+               CALL 'ZBI01H2V' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01JZQ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI01H2V FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI01Q8Q-002.
-               CALL 'ZBI01Q8Q' USING DFHCOMMAREA
+       CALL-ZBI01SJB-002.
+               MOVE 'ZBI01SJB' TO WS-SUBNAME-5
+               CALL WS-SUBNAME-5 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01Q8Q FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI01SJB FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI01NJI-003.
-               CALL 'ZBI01NJI' USING DFHCOMMAREA
+       CALL-ZBI01MKI-003.
+               MOVE 'ZBI01MKI' TO WS-SUBNAME-6
+               CALL WS-SUBNAME-6 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01NJI FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI01MKI FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI01OY2-004.
-               CALL 'ZBI01OY2' USING DFHCOMMAREA
+       CALL-ZBI01T0P-004.
+               CALL 'ZBI01T0P' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01OY2 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI01T0P FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI00YZC-005.
-               CALL 'ZBI00YZC' USING DFHCOMMAREA
+       CALL-ZBI01LCA-005.
+               CALL 'ZBI01LCA' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00YZC FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI01LCA FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       APPLY-MANAGED-FUND-0001.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       RECONCILE-POSTCODE-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       FORMAT-SUM-ASSURED-0003.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       APPLY-POSTCODE-0004.
-               MOVE 'POSTCODE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
+       CALL-ZBI01HW0-006.
+               CALL 'ZBI01HW0' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZBI01HW0 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

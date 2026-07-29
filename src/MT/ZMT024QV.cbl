@@ -86,21 +86,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01KD7              PIC X(8) VALUE 'ZMT01KD7'.
-       01  MOD-ZRE01JE3              PIC X(8) VALUE 'ZRE01JE3'.
-       01  MOD-ZMT01HJT              PIC X(8) VALUE 'ZMT01HJT'.
-       01  MOD-ZMT01LH7              PIC X(8) VALUE 'ZMT01LH7'.
-       01  MOD-ZMT00YFH              PIC X(8) VALUE 'ZMT00YFH'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-1              PIC X(8) VALUE SPACES.
+       01  MOD-ZMT01TCV              PIC X(8) VALUE 'ZMT01TCV'.
+       01  MOD-ZMT01UAA              PIC X(8) VALUE 'ZMT01UAA'.
+       01  MOD-ZMT01GCZ              PIC X(8) VALUE 'ZMT01GCZ'.
+       01  MOD-ZMT011SS              PIC X(8) VALUE 'ZMT011SS'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -115,14 +111,22 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZMT01UK5-001.
-               PERFORM CALL-ZRE01JE3-003.
-               PERFORM CALL-ZMT01HJT-004.
-               PERFORM CALL-ZMT01LH7-005.
-               PERFORM CALL-ZMT00YFH-006.
-               PERFORM DERIVE-TERM-0001.
-               PERFORM AUDIT-ROOF-TYPE-0002.
-               PERFORM CHECK-CC-RATING-0003.
+               PERFORM CALL-ZMT01TCV-001.
+               PERFORM CALL-ZMT01UAA-002.
+               PERFORM CALL-ZMT01GCZ-003.
+               PERFORM EXPAND-TAX-BAND-0001.
+               PERFORM FORMAT-NCD-YEARS-0002.
+               PERFORM DERIVE-BEDROOMS-0003.
+               PERFORM FORMAT-COLOUR-0004.
+               PERFORM APPLY-STATUS-CODE-0005.
+               PERFORM RESOLVE-COLOUR-0006.
+               PERFORM EXPAND-PREMIUM-0007.
+               PERFORM RESOLVE-SUM-ASSURED-0008.
+               PERFORM AUDIT-PREMIUM-0009.
+               PERFORM FORMAT-WITH-PROFITS-0010.
+               PERFORM DERIVE-ROOF-TYPE-0011.
+               PERFORM NORMALISE-NCD-YEARS-0012.
+               PERFORM NORMALISE-CC-RATING-0013.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -135,76 +139,147 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZMT01UK5-001.
-               MOVE 'ZMT01UK5' TO WS-SUBNAME-1
-               CALL WS-SUBNAME-1 USING DFHCOMMAREA
+       CALL-ZMT01TCV-001.
+               CALL 'ZMT01TCV' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01UK5 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01TCV FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01KD7-002.
-               CALL 'ZMT01KD7' USING DFHCOMMAREA
+       CALL-ZMT01UAA-002.
+               CALL 'ZMT01UAA' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01KD7 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01UAA FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01JE3-003.
-               CALL 'ZRE01JE3' USING DFHCOMMAREA
+       CALL-ZMT01GCZ-003.
+               CALL 'ZMT01GCZ' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01JE3 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01GCZ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01HJT-004.
-               CALL 'ZMT01HJT' USING DFHCOMMAREA
+       CALL-ZMT011SS-004.
+               CALL 'ZMT011SS' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01HJT FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT011SS FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01LH7-005.
-               CALL 'ZMT01LH7' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01LH7 FAILED' TO EM-VARIABLE
+       EXPAND-TAX-BAND-0001.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT00YFH-006.
-               CALL 'ZMT00YFH' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT00YFH FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       FORMAT-NCD-YEARS-0002.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
       *----------------------------------------------------------------*
-       DERIVE-TERM-0001.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
+       DERIVE-BEDROOMS-0003.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
       *----------------------------------------------------------------*
-       AUDIT-ROOF-TYPE-0002.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO ROOF-TYPE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       CHECK-CC-RATING-0003.
+       FORMAT-COLOUR-0004.
                MOVE SPACES TO WS-KEY-CHAR.
                STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
                          '/'              DELIMITED BY SIZE
                          WS-KEY-POLICY    DELIMITED BY SIZE
                          INTO WS-KEY-CHAR
                END-STRING.
+      *----------------------------------------------------------------*
+       APPLY-STATUS-CODE-0005.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       RESOLVE-COLOUR-0006.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       EXPAND-PREMIUM-0007.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       RESOLVE-SUM-ASSURED-0008.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       AUDIT-PREMIUM-0009.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-WITH-PROFITS-0010.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       DERIVE-ROOF-TYPE-0011.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       NORMALISE-NCD-YEARS-0012.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO NCD-YEARS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-CC-RATING-0013.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

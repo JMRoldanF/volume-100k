@@ -86,16 +86,20 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU01O9U              PIC X(8) VALUE 'ZCU01O9U'.
-       01  MOD-ZEN01K93              PIC X(8) VALUE 'ZEN01K93'.
-       01  MOD-ZCU01DKK              PIC X(8) VALUE 'ZCU01DKK'.
+       01  MOD-ZCU01SZV              PIC X(8) VALUE 'ZCU01SZV'.
+       01  MOD-ZCU01PHU              PIC X(8) VALUE 'ZCU01PHU'.
+       01  MOD-ZCU01R0S              PIC X(8) VALUE 'ZCU01R0S'.
+       01  MOD-ZCU00XWK              PIC X(8) VALUE 'ZCU00XWK'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-8              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -110,15 +114,11 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZCU01O9U-001.
-               PERFORM CALL-ZEN01K93-002.
-               PERFORM CALL-ZCU01DKK-003.
-               PERFORM RECONCILE-STATUS-CODE-0002.
-               PERFORM APPLY-HOUSE-TYPE-0003.
-               PERFORM VALIDATE-MANAGED-FUND-0004.
-               PERFORM NORMALISE-TERM-0005.
-               PERFORM RESOLVE-STATUS-CODE-0006.
-               PERFORM EXPAND-BROKER-ID-0007.
+               PERFORM CALL-ZCU01SZV-001.
+               PERFORM CALL-ZCU01PHU-002.
+               PERFORM CALL-ZCU01R0S-003.
+               PERFORM CALL-ZCU01DWI-004.
+               PERFORM CALL-ZCU00XWK-005.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -131,92 +131,45 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZCU01O9U-001.
-               CALL 'ZCU01O9U' USING DFHCOMMAREA
+       CALL-ZCU01SZV-001.
+               CALL 'ZCU01SZV' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01O9U FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01SZV FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01K93-002.
-               CALL 'ZEN01K93' USING DFHCOMMAREA
+       CALL-ZCU01PHU-002.
+               CALL 'ZCU01PHU' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01K93 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01PHU FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU01DKK-003.
-               CALL 'ZCU01DKK' USING DFHCOMMAREA
+       CALL-ZCU01R0S-003.
+               CALL 'ZCU01R0S' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01DKK FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01R0S FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-MODEL-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RECONCILE-STATUS-CODE-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       APPLY-HOUSE-TYPE-0003.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 10
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+       CALL-ZCU01DWI-004.
+               MOVE 'ZCU01DWI' TO WS-SUBNAME-8
+               CALL WS-SUBNAME-8 USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCU01DWI FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-MANAGED-FUND-0004.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       NORMALISE-TERM-0005.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       RESOLVE-STATUS-CODE-0006.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       EXPAND-BROKER-ID-0007.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 4
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+       CALL-ZCU00XWK-005.
+               CALL 'ZCU00XWK' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCU00XWK FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

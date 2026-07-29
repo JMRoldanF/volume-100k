@@ -86,18 +86,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-EXCESS         PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-TERM           PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN01KWF              PIC X(8) VALUE 'ZEN01KWF'.
-       01  MOD-ZEN01NTP              PIC X(8) VALUE 'ZEN01NTP'.
-       01  MOD-ZEN01LND              PIC X(8) VALUE 'ZEN01LND'.
-       01  MOD-ZEN01OTJ              PIC X(8) VALUE 'ZEN01OTJ'.
-       01  MOD-ZEN00MPL              PIC X(8) VALUE 'ZEN00MPL'.
+       01  MOD-ZEN01FZ0              PIC X(8) VALUE 'ZEN01FZ0'.
+       01  MOD-ZEN01NO4              PIC X(8) VALUE 'ZEN01NO4'.
+       01  MOD-ZEN01P68              PIC X(8) VALUE 'ZEN01P68'.
+       01  MOD-ZEN01LLT              PIC X(8) VALUE 'ZEN01LLT'.
+       01  MOD-ZTR01EVJ              PIC X(8) VALUE 'ZTR01EVJ'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-7              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -112,18 +115,13 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZEN01KWF-001.
-               PERFORM CALL-ZEN01NTP-002.
-               PERFORM CALL-ZEN01LND-003.
-               PERFORM CALL-ZEN01OTJ-004.
-               PERFORM CALL-ZEN00MPL-005.
-               PERFORM AUDIT-AGENT-CODE-0001.
-               PERFORM REFRESH-MANAGED-FUND-0002.
-               PERFORM REFRESH-VALUE-0003.
-               PERFORM REFRESH-CC-RATING-0004.
-               PERFORM RESOLVE-EXCESS-0005.
-               PERFORM REFRESH-HOUSE-TYPE-0006.
-               PERFORM AUDIT-CC-RATING-0008.
+               PERFORM CALL-ZEN01FZ0-001.
+               PERFORM CALL-ZEN01NO4-002.
+               PERFORM CALL-ZLB01MS4-003.
+               PERFORM CALL-ZEN01P68-004.
+               PERFORM CALL-ZEN01LLT-005.
+               PERFORM CALL-ZTR01EVJ-006.
+               PERFORM EXPAND-EXCESS-0002.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -136,108 +134,66 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZEN01KWF-001.
-               CALL 'ZEN01KWF' USING DFHCOMMAREA
+       CALL-ZEN01FZ0-001.
+               CALL 'ZEN01FZ0' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01KWF FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01FZ0 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01NTP-002.
-               CALL 'ZEN01NTP' USING DFHCOMMAREA
+       CALL-ZEN01NO4-002.
+               CALL 'ZEN01NO4' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01NTP FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01NO4 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01LND-003.
-               CALL 'ZEN01LND' USING DFHCOMMAREA
+       CALL-ZLB01MS4-003.
+               MOVE 'ZLB01MS4' TO WS-SUBNAME-7
+               CALL WS-SUBNAME-7 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01LND FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZLB01MS4 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01OTJ-004.
-               CALL 'ZEN01OTJ' USING DFHCOMMAREA
+       CALL-ZEN01P68-004.
+               CALL 'ZEN01P68' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01OTJ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01P68 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN00MPL-005.
-               CALL 'ZEN00MPL' USING DFHCOMMAREA
+       CALL-ZEN01LLT-005.
+               CALL 'ZEN01LLT' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00MPL FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01LLT FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       AUDIT-AGENT-CODE-0001.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       REFRESH-MANAGED-FUND-0002.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       REFRESH-VALUE-0003.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO VALUE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
+       CALL-ZTR01EVJ-006.
+               CALL 'ZTR01EVJ' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZTR01EVJ FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       REFRESH-CC-RATING-0004.
+       CHECK-POSTCODE-0001.
                INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
                IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       RESOLVE-EXCESS-0005.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 5
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+       EXPAND-EXCESS-0002.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       REFRESH-HOUSE-TYPE-0006.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       NORMALISE-TERM-0007.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       AUDIT-CC-RATING-0008.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

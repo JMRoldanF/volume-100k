@@ -56,20 +56,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO00E62              PIC X(8) VALUE 'ZHO00E62'.
-       01  MOD-ZMT00I71              PIC X(8) VALUE 'ZMT00I71'.
-       01  MOD-ZCU003U6              PIC X(8) VALUE 'ZCU003U6'.
-       01  MOD-ZMT0255L              PIC X(8) VALUE 'ZMT0255L'.
+       01  MOD-ZMT00DOC              PIC X(8) VALUE 'ZMT00DOC'.
+       01  MOD-ZPT00G3T              PIC X(8) VALUE 'ZPT00G3T'.
+       01  MOD-ZMT00DU3              PIC X(8) VALUE 'ZMT00DU3'.
+       01  MOD-ZRN00ACM              PIC X(8) VALUE 'ZRN00ACM'.
+       01  MOD-ZMT0010V              PIC X(8) VALUE 'ZMT0010V'.
 
       * BMS mapset copy
-           COPY ZMTMAP05.
+           COPY ZMTMAP90.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -77,7 +78,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0047.
+               COPY ZKMT0011.
+               COPY ZKMT0057.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -91,72 +93,160 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZHO00E62-001.
-               PERFORM CALL-ZMT00I71-002.
-               PERFORM CALL-ZCU003U6-003.
-               PERFORM CALL-ZMT0255L-004.
-               PERFORM APPLY-SUM-ASSURED-0001.
-               PERFORM REFRESH-AGENT-CODE-0002.
+               PERFORM CALL-ZMT00DOC-001.
+               PERFORM CALL-ZPT00G3T-002.
+               PERFORM CALL-ZMT00DU3-003.
+               PERFORM CALL-ZRN00ACM-004.
+               PERFORM CALL-ZMT0010V-005.
+               PERFORM RESOLVE-AGENT-CODE-0001.
+               PERFORM RECONCILE-EQUITIES-0002.
+               PERFORM DERIVE-EQUITIES-0003.
+               PERFORM AUDIT-MANAGED-FUND-0005.
+               PERFORM AUDIT-VALUE-0006.
+               PERFORM SEND-RECEIVE-MAP-0007.
+               PERFORM VALIDATE-SUM-ASSURED-0008.
+               PERFORM EXPAND-MANAGED-FUND-0009.
+               PERFORM APPLY-MODEL-0010.
+               PERFORM VALIDATE-MODEL-0011.
+               PERFORM RESOLVE-MODEL-0012.
+               PERFORM CHECK-PREMIUM-0013.
+               PERFORM SEND-RECEIVE-MAP-0014.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZHO00E62-001.
-               EXEC CICS LINK PROGRAM('ZHO00E62')
+       CALL-ZMT00DOC-001.
+               EXEC CICS LINK PROGRAM('ZMT00DOC')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO00E62 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT00DOC FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT00I71-002.
-               EXEC CICS LINK PROGRAM('ZMT00I71')
+       CALL-ZPT00G3T-002.
+               EXEC CICS LINK PROGRAM('ZPT00G3T')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT00I71 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPT00G3T FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU003U6-003.
-               EXEC CICS XCTL PROGRAM('ZCU003U6')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU003U6 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZMT0255L-004.
-               EXEC CICS LINK PROGRAM('ZMT0255L')
+       CALL-ZMT00DU3-003.
+               EXEC CICS LINK PROGRAM('ZMT00DU3')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT0255L FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT00DU3 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       APPLY-SUM-ASSURED-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
+       CALL-ZRN00ACM-004.
+               EXEC CICS LINK PROGRAM('ZRN00ACM')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZRN00ACM FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
-       REFRESH-AGENT-CODE-0002.
+       CALL-ZMT0010V-005.
+               EXEC CICS XCTL PROGRAM('ZMT0010V')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT0010V FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       RESOLVE-AGENT-CODE-0001.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 5
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       RECONCILE-EQUITIES-0002.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       DERIVE-EQUITIES-0003.
+               MOVE 'EQUITIES' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       DERIVE-AGENT-CODE-0004.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO AGENT-CODE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-MANAGED-FUND-0005.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MANAGED-FUND' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-VALUE-0006.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO VALUE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0007.
+               EXEC CICS SEND MAP('ZMTMAP9I')
+                         MAPSET('ZMTMAP90')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZMTMAP9I')
+                         MAPSET('ZMTMAP90')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       VALIDATE-SUM-ASSURED-0008.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       EXPAND-MANAGED-FUND-0009.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       APPLY-MODEL-0010.
                EVALUATE TRUE
                   WHEN WS-PREMIUM-TOTAL < 999
                        MOVE 1 TO WS-PREMIUM-BAND
@@ -168,12 +258,40 @@
                        MOVE 9 TO WS-PREMIUM-BAND
                END-EVALUATE.
       *----------------------------------------------------------------*
-       COMPUTE-POSTCODE-0003.
+       VALIDATE-MODEL-0011.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
                EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
                          MMDDYYYY(DATE1)
                          TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-MODEL-0012.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       CHECK-PREMIUM-0013.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 4
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0014.
+               EXEC CICS SEND MAP('ZMTMAP9I')
+                         MAPSET('ZMTMAP90')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZMTMAP9I')
+                         MAPSET('ZMTMAP90')
+                         RESP(WS-RESP)
                END-EXEC.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

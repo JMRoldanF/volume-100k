@@ -56,19 +56,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
                 05 WS-T-MODEL          PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZPA00YT1              PIC X(8) VALUE 'ZPA00YT1'.
-       01  MOD-ZPA016CP              PIC X(8) VALUE 'ZPA016CP'.
-       01  MOD-ZPA01GO3              PIC X(8) VALUE 'ZPA01GO3'.
-
-      * Dynamically resolved module names
-       01  WS-PROGNAME-5             PIC X(8) VALUE SPACES.
+       01  MOD-ZPA00XGG              PIC X(8) VALUE 'ZPA00XGG'.
+       01  MOD-ZPA011YY              PIC X(8) VALUE 'ZPA011YY'.
+       01  MOD-ZPA011DM              PIC X(8) VALUE 'ZPA011DM'.
+       01  MOD-ZPA015Y5              PIC X(8) VALUE 'ZPA015Y5'.
+       01  MOD-ZBI0255Q              PIC X(8) VALUE 'ZBI0255Q'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -76,9 +75,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKPA0015.
-               COPY ZKPA0030.
-               COPY ZKPA0012.
+               COPY ZKPA0032.
+               COPY ZKPA0054.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -92,57 +90,169 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGTS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZPA00YT1-001.
-               PERFORM CALL-ZPA016CP-002.
-               PERFORM CALL-ZPA018AZ-003.
-               PERFORM CALL-ZPA01GO3-004.
+               PERFORM CALL-ZPA00XGG-001.
+               PERFORM CALL-ZPA011YY-002.
+               PERFORM CALL-ZPA011DM-003.
+               PERFORM CALL-ZPA015Y5-004.
+               PERFORM CALL-ZBI0255Q-005.
+               PERFORM DERIVE-CC-RATING-0001.
+               PERFORM APPLY-CC-RATING-0002.
+               PERFORM FORMAT-HOUSE-TYPE-0003.
+               PERFORM FORMAT-AGENT-CODE-0004.
+               PERFORM CHECK-ROOF-TYPE-0006.
+               PERFORM AUDIT-BEDROOMS-0007.
+               PERFORM FORMAT-VALUE-0008.
+               PERFORM RECONCILE-MAKE-0009.
+               PERFORM NORMALISE-COLOUR-0010.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZPA00YT1-001.
-               EXEC CICS LINK PROGRAM('ZPA00YT1')
+       CALL-ZPA00XGG-001.
+               EXEC CICS LINK PROGRAM('ZPA00XGG')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA00YT1 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00XGG FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA016CP-002.
-               EXEC CICS LINK PROGRAM('ZPA016CP')
+       CALL-ZPA011YY-002.
+               EXEC CICS LINK PROGRAM('ZPA011YY')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA016CP FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA011YY FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA018AZ-003.
-               MOVE 'ZPA018AZ' TO WS-PROGNAME-5
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-5)
+       CALL-ZPA011DM-003.
+               EXEC CICS LINK PROGRAM('ZPA011DM')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA018AZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA011DM FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01GO3-004.
-               CALL 'ZPA01GO3' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
+       CALL-ZPA015Y5-004.
+               EXEC CICS LINK PROGRAM('ZPA015Y5')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01GO3 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA015Y5 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZBI0255Q-005.
+               EXEC CICS LINK PROGRAM('ZBI0255Q')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZBI0255Q FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-CC-RATING-0001.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       APPLY-CC-RATING-0002.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       FORMAT-HOUSE-TYPE-0003.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 9
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       FORMAT-AGENT-CODE-0004.
+               MOVE 'AGENT-CODE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       APPLY-BEDROOMS-0005.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       CHECK-ROOF-TYPE-0006.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 5
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-BEDROOMS-0007.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-VALUE-0008.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO VALUE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       RECONCILE-MAKE-0009.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       NORMALISE-COLOUR-0010.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO COLOUR' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

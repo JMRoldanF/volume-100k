@@ -1,0 +1,17 @@
+      ******************************************************************
+      * COPYBOOK ZKED0053 (record)                                     *
+      ******************************************************************
+               03 ZKED0053-REC.
+                  05 ENDO-REG-NUMBER       PIC S9(4) COMP.
+                  05 ENDO-AGENT-CODE       PIC S9(4) COMP.
+                  05 ENDO-MANAGED-FUND     PIC S9(4) COMP.
+                  05 ENDO-BEDROOMS         PIC 9(8).
+                  05 ENDO-POSTCODE         PIC X(10).
+                  05 ENDO-EXCESS           PIC 9(8).
+                  05 ENDO-CC-RATING        PIC X(10).
+                  05 ENDO-PREMIUM          PIC X(10).
+                  05 ENDO-MODEL            PIC S9(4) COMP.
+                  05 ENDO-HOUSE-TYPE       PIC S9(4) COMP.
+                  05 ENDO-TABLE OCCURS 12 TIMES.
+                     07 TAB-MONTH             PIC 9(2).
+                     07 TAB-AMOUNT            PIC S9(7)V99 COMP-3.

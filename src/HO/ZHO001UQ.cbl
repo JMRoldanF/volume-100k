@@ -56,18 +56,22 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-EXCESS         PIC X(12).
-                05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO00JSA              PIC X(8) VALUE 'ZHO00JSA'.
-       01  MOD-ZHO00C0A              PIC X(8) VALUE 'ZHO00C0A'.
+       01  MOD-ZHO00GGY              PIC X(8) VALUE 'ZHO00GGY'.
+       01  MOD-ZHO00CXR              PIC X(8) VALUE 'ZHO00CXR'.
+       01  MOD-ZHO00A0S              PIC X(8) VALUE 'ZHO00A0S'.
+       01  MOD-ZHO00LBS              PIC X(8) VALUE 'ZHO00LBS'.
+       01  MOD-ZHO004N0              PIC X(8) VALUE 'ZHO004N0'.
+       01  MOD-ZRE0255R              PIC X(8) VALUE 'ZRE0255R'.
 
       * BMS mapset copy
-           COPY ZHOMAP08.
+           COPY ZHOMAP18.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -75,9 +79,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKHO0020.
-               COPY ZKHO0005.
-               COPY ZKHO0027.
+               COPY ZKHO0009.
+               COPY ZKHO0014.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -91,168 +94,95 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGRC')
+                  EXEC CICS ABEND ABCODE('LGTS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZHO00JSA-001.
-               PERFORM CALL-ZHO00C0A-002.
-               PERFORM VALIDATE-STATUS-CODE-0001.
-               PERFORM REFRESH-SUM-ASSURED-0002.
-               PERFORM FORMAT-HOUSE-TYPE-0003.
-               PERFORM DERIVE-MAKE-0004.
-               PERFORM VALIDATE-VALUE-0005.
-               PERFORM VALIDATE-NCD-YEARS-0006.
-               PERFORM SEND-RECEIVE-MAP-0007.
-               PERFORM RECONCILE-POSTCODE-0009.
-               PERFORM CHECK-ROOF-TYPE-0010.
-               PERFORM COMPUTE-PREMIUM-0011.
-               PERFORM DERIVE-BEDROOMS-0012.
-               PERFORM EXPAND-AGENT-CODE-0013.
-               PERFORM SEND-RECEIVE-MAP-0014.
+               PERFORM CALL-ZHO00GGY-001.
+               PERFORM CALL-ZHO00CXR-002.
+               PERFORM CALL-ZHO00A0S-003.
+               PERFORM CALL-ZHO00LBS-004.
+               PERFORM CALL-ZHO004N0-005.
+               PERFORM CALL-ZRE0255R-007.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZHO00JSA-001.
-               EXEC CICS LINK PROGRAM('ZHO00JSA')
+       CALL-ZHO00GGY-001.
+               EXEC CICS LINK PROGRAM('ZHO00GGY')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO00JSA FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00GGY FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO00C0A-002.
-               EXEC CICS LINK PROGRAM('ZHO00C0A')
+       CALL-ZHO00CXR-002.
+               EXEC CICS LINK PROGRAM('ZHO00CXR')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO00C0A FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00CXR FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-STATUS-CODE-0001.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       REFRESH-SUM-ASSURED-0002.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO SUM-ASSURED' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-HOUSE-TYPE-0003.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+       CALL-ZHO00A0S-003.
+               EXEC CICS LINK PROGRAM('ZHO00A0S')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
                END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       DERIVE-MAKE-0004.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZHO00A0S FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       VALIDATE-VALUE-0005.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO VALUE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       VALIDATE-NCD-YEARS-0006.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0007.
-               EXEC CICS SEND MAP('ZHOMAP0I')
-                         MAPSET('ZHOMAP08')
-                         ERASE
+       CALL-ZHO00LBS-004.
+               EXEC CICS LINK PROGRAM('ZHO00LBS')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
-               EXEC CICS RECEIVE MAP('ZHOMAP0I')
-                         MAPSET('ZHOMAP08')
-                         RESP(WS-RESP)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       REFRESH-BEDROOMS-0008.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZHO00LBS FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       RECONCILE-POSTCODE-0009.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       CHECK-ROOF-TYPE-0010.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       COMPUTE-PREMIUM-0011.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO PREMIUM' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
+       CALL-ZHO004N0-005.
+               EXEC CICS XCTL PROGRAM('ZHO004N0')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZHO004N0 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       DERIVE-BEDROOMS-0012.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       EXPAND-AGENT-CODE-0013.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0014.
-               EXEC CICS SEND MAP('ZHOMAP0I')
-                         MAPSET('ZHOMAP08')
-                         ERASE
+       CALL-ZHO000GD-006.
+               EXEC CICS START TRANSID('Z0GD')
+                         FROM(WS-KEY-AREA)
+                         LENGTH(20)
                          RESP(WS-RESP)
                END-EXEC.
-               EXEC CICS RECEIVE MAP('ZHOMAP0I')
-                         MAPSET('ZHOMAP08')
+      * TRANSID Z0GD is defined against ZHO000GD
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZHO000GD FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZRE0255R-007.
+               EXEC CICS LINK PROGRAM('ZRE0255R')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZRE0255R FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

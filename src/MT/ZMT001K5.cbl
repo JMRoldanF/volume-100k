@@ -56,20 +56,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-BROKER-ID      PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU00F9K              PIC X(8) VALUE 'ZCU00F9K'.
-       01  MOD-ZMT006KZ              PIC X(8) VALUE 'ZMT006KZ'.
-       01  MOD-ZHO00AW0              PIC X(8) VALUE 'ZHO00AW0'.
-       01  MOD-ZEN0255N              PIC X(8) VALUE 'ZEN0255N'.
+       01  MOD-ZMT006Q4              PIC X(8) VALUE 'ZMT006Q4'.
+       01  MOD-ZMT00GH5              PIC X(8) VALUE 'ZMT00GH5'.
 
       * BMS mapset copy
-           COPY ZMTMAP05.
+           COPY ZMTMAP25.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -77,7 +75,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0038.
+               COPY ZKMT0008.
+               COPY ZKMT0029.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -96,55 +95,103 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCU00F9K-001.
-               PERFORM CALL-ZMT006KZ-002.
-               PERFORM CALL-ZHO00AW0-003.
-               PERFORM CALL-ZEN0255N-004.
+               PERFORM CALL-ZMT006Q4-001.
+               PERFORM CALL-ZMT00GH5-002.
+               PERFORM COMPUTE-WITH-PROFITS-0001.
+               PERFORM COMPUTE-MAKE-0003.
+               PERFORM FORMAT-POSTCODE-0004.
+               PERFORM APPLY-MODEL-0005.
+               PERFORM VALIDATE-HOUSE-TYPE-0006.
+               PERFORM SEND-RECEIVE-MAP-0007.
+               PERFORM RECONCILE-MANAGED-FUND-0008.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCU00F9K-001.
-               EXEC CICS LINK PROGRAM('ZCU00F9K')
+       CALL-ZMT006Q4-001.
+               EXEC CICS LINK PROGRAM('ZMT006Q4')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00F9K FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT006Q4 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT006KZ-002.
-               EXEC CICS LINK PROGRAM('ZMT006KZ')
+       CALL-ZMT00GH5-002.
+               EXEC CICS LINK PROGRAM('ZMT00GH5')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT006KZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT00GH5 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO00AW0-003.
-               EXEC CICS LINK PROGRAM('ZHO00AW0')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO00AW0 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
+       COMPUTE-WITH-PROFITS-0001.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN0255N-004.
-               EXEC CICS LINK PROGRAM('ZEN0255N')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
+       CHECK-PREMIUM-0002.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       COMPUTE-MAKE-0003.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       FORMAT-POSTCODE-0004.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       APPLY-MODEL-0005.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 7
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       VALIDATE-HOUSE-TYPE-0006.
+               MOVE 'HOUSE-TYPE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0007.
+               EXEC CICS SEND MAP('ZMTMAP2I')
+                         MAPSET('ZMTMAP25')
+                         ERASE
                          RESP(WS-RESP)
                END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN0255N FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+               EXEC CICS RECEIVE MAP('ZMTMAP2I')
+                         MAPSET('ZMTMAP25')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RECONCILE-MANAGED-FUND-0008.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

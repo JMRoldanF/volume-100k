@@ -56,16 +56,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-STATUS-CODE    PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO01PX8              PIC X(8) VALUE 'ZHO01PX8'.
-       01  MOD-ZHO01JZ2              PIC X(8) VALUE 'ZHO01JZ2'.
-       01  MOD-ZAG0255S              PIC X(8) VALUE 'ZAG0255S'.
+       01  MOD-ZHO01T3Y              PIC X(8) VALUE 'ZHO01T3Y'.
+       01  MOD-ZFL01LHH              PIC X(8) VALUE 'ZFL01LHH'.
+
+      * Dynamically resolved module names
+       01  WS-PROGNAME-2             PIC X(8) VALUE SPACES.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -85,8 +87,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKHO0036.
-               COPY ZKHO0034.
+               COPY ZKHO0055.
+               COPY ZKHO0057.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -100,67 +102,63 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGRC')
+                  EXEC CICS ABEND ABCODE('LGCA')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZHO01PX8-001.
-               PERFORM CALL-ZHO01JZ2-002.
-               PERFORM CALL-ZAG0255S-003.
-               PERFORM CHECK-BROKER-ID-0001.
+               PERFORM CALL-ZHO01T3Y-001.
+               PERFORM CALL-ZFL01LHH-002.
+               PERFORM CALL-ZMT0255L-003.
+               PERFORM NORMALISE-VALUE-0001.
+               PERFORM RECONCILE-PREMIUM-0002.
                PERFORM SQL-ACCESS-0003.
-               PERFORM NORMALISE-HOUSE-TYPE-0004.
-               PERFORM NORMALISE-TERM-0005.
-               PERFORM SQL-ACCESS-0006.
+               PERFORM DERIVE-TERM-0005.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZHO01PX8-001.
-               CALL 'ZHO01PX8' USING DFHCOMMAREA
+       CALL-ZHO01T3Y-001.
+               CALL 'ZHO01T3Y' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01PX8 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01T3Y FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01JZ2-002.
-               CALL 'ZHO01JZ2' USING DFHCOMMAREA
+       CALL-ZFL01LHH-002.
+               CALL 'ZFL01LHH' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01JZ2 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZFL01LHH FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG0255S-003.
-               EXEC CICS LINK PROGRAM('ZAG0255S')
+       CALL-ZMT0255L-003.
+               MOVE 'ZMT0255L' TO WS-PROGNAME-2
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-2)
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG0255S FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT0255L FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CHECK-BROKER-ID-0001.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO BROKER-ID' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
+       NORMALISE-VALUE-0001.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
-       COMPUTE-AGENT-CODE-0002.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
+       RECONCILE-PREMIUM-0002.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
        SQL-ACCESS-0003.
                EXEC SQL
-                     INSERT INTO GENAHO.SURCHARGE
+                     INSERT INTO GENAHO.COVER
                             (CUSTOMERNUMBER, POLICYNUMBER,
                              ISSUEDATE, EXPIRYDATE, PAYMENT)
                      VALUES (:HV-CUSTOMER-NUM, :HV-POLICY-NUM,
@@ -168,38 +166,21 @@
                              :HV-PAYMENT)
                END-EXEC.
       *----------------------------------------------------------------*
-       NORMALISE-HOUSE-TYPE-0004.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
+       RECONCILE-BEDROOMS-0004.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO BEDROOMS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       NORMALISE-TERM-0005.
+       DERIVE-TERM-0005.
                MOVE 'TERM' TO WS-T-AMOUNT(1)
                SEARCH ALL WS-TABLE-ENTRY
                   AT END MOVE '01' TO WS-STATUS-CODE
                   WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
                        CONTINUE
                END-SEARCH.
-      *----------------------------------------------------------------*
-       SQL-ACCESS-0006.
-               EXEC SQL
-                     DECLARE C0006 CURSOR FOR
-                     SELECT POLICYNUMBER, PAYMENT
-                       FROM GENAHO.ADDRESS A
-                       JOIN GENAHO.CUSTOMER B
-                         ON A.CUSTOMERNUMBER = B.CUSTOMERNUMBER
-                      WHERE A.EXPIRYDATE > :HV-EXPIRY-DATE
-                      ORDER BY A.POLICYNUMBER
-               END-EXEC.
-               EXEC SQL OPEN C0006 END-EXEC.
-               PERFORM UNTIL SQLCODE NOT = 0
-                  EXEC SQL FETCH C0006
-                            INTO :HV-POLICY-NUM, :HV-PAYMENT
-                  END-EXEC
-                  ADD HV-PAYMENT TO WS-PREMIUM-TOTAL
-               END-PERFORM.
-               EXEC SQL CLOSE C0006 END-EXEC.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

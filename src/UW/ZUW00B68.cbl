@@ -56,19 +56,19 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
-                05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZUW01IXS              PIC X(8) VALUE 'ZUW01IXS'.
-       01  MOD-ZUW01R9I              PIC X(8) VALUE 'ZUW01R9I'.
-
-      * Dynamically resolved module names
-       01  WS-PROGNAME-4             PIC X(8) VALUE SPACES.
-       01  WS-PROGNAME-5             PIC X(8) VALUE SPACES.
+       01  MOD-ZUW00TEV              PIC X(8) VALUE 'ZUW00TEV'.
+       01  MOD-ZUW00MUR              PIC X(8) VALUE 'ZUW00MUR'.
+       01  MOD-ZUW01C3I              PIC X(8) VALUE 'ZUW01C3I'.
+       01  MOD-ZUW0174T              PIC X(8) VALUE 'ZUW0174T'.
+       01  MOD-ZUW01O19              PIC X(8) VALUE 'ZUW01O19'.
+       01  MOD-ZCL0255P              PIC X(8) VALUE 'ZCL0255P'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -76,7 +76,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKUW0051.
+               COPY ZKUW0018.
+               COPY ZKUW0022.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -90,56 +91,124 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZUW00Q54-001.
-               PERFORM CALL-ZUW018GU-002.
-               PERFORM CALL-ZUW01IXS-003.
-               PERFORM CALL-ZUW01R9I-004.
+               PERFORM CALL-ZUW00TEV-001.
+               PERFORM CALL-ZUW00MUR-002.
+               PERFORM CALL-ZUW01C3I-003.
+               PERFORM CALL-ZUW0174T-004.
+               PERFORM CALL-ZUW01O19-005.
+               PERFORM CALL-ZCL0255P-006.
+               PERFORM COMPUTE-HOUSE-TYPE-0002.
+               PERFORM EXPAND-EQUITIES-0003.
+               PERFORM AUDIT-COLOUR-0004.
+               PERFORM DERIVE-NCD-YEARS-0005.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZUW00Q54-001.
-               MOVE 'ZUW00Q54' TO WS-PROGNAME-4
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-4)
+       CALL-ZUW00TEV-001.
+               EXEC CICS LINK PROGRAM('ZUW00TEV')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW00Q54 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW00TEV FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW018GU-002.
-               MOVE 'ZUW018GU' TO WS-PROGNAME-5
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-5)
+       CALL-ZUW00MUR-002.
+               EXEC CICS LINK PROGRAM('ZUW00MUR')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW018GU FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW00MUR FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW01IXS-003.
-               CALL 'ZUW01IXS' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
+       CALL-ZUW01C3I-003.
+               EXEC CICS LINK PROGRAM('ZUW01C3I')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01IXS FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01C3I FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW01R9I-004.
-               CALL 'ZUW01R9I' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
+       CALL-ZUW0174T-004.
+               EXEC CICS LINK PROGRAM('ZUW0174T')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01R9I FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW0174T FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZUW01O19-005.
+               CALL 'ZUW01O19' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZUW01O19 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZCL0255P-006.
+               EXEC CICS LINK PROGRAM('ZCL0255P')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCL0255P FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-AGENT-CODE-0001.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
+      *----------------------------------------------------------------*
+       COMPUTE-HOUSE-TYPE-0002.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO HOUSE-TYPE' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-EQUITIES-0003.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO EQUITIES' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-COLOUR-0004.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
+      *----------------------------------------------------------------*
+       DERIVE-NCD-YEARS-0005.
+               MOVE 'NCD-YEARS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

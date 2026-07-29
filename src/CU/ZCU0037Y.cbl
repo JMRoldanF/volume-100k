@@ -56,22 +56,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-CC-RATING      PIC X(12).
-                05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU00H6Q              PIC X(8) VALUE 'ZCU00H6Q'.
-       01  MOD-ZCU00A1I              PIC X(8) VALUE 'ZCU00A1I'.
-       01  MOD-ZCU008M4              PIC X(8) VALUE 'ZCU008M4'.
-       01  MOD-ZCU00C8E              PIC X(8) VALUE 'ZCU00C8E'.
-       01  MOD-ZCL002FD              PIC X(8) VALUE 'ZCL002FD'.
-       01  MOD-ZMT0255L              PIC X(8) VALUE 'ZMT0255L'.
+       01  MOD-ZCU00H01              PIC X(8) VALUE 'ZCU00H01'.
+       01  MOD-ZCU00IJW              PIC X(8) VALUE 'ZCU00IJW'.
+
+      * Dynamically resolved module names
+       01  WS-PROGNAME-7             PIC X(8) VALUE SPACES.
 
       * BMS mapset copy
-           COPY ZCUMAP07.
+           COPY ZCUMAP24.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -79,8 +78,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCU0044.
-               COPY ZKCU0030.
+               COPY ZKCU0033.
+               COPY ZKCU0045.
+               COPY ZKCU0007.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -94,118 +94,49 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGRC')
+                  EXEC CICS ABEND ABCODE('LGCA')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCU00H6Q-001.
-               PERFORM CALL-ZCU00A1I-002.
-               PERFORM CALL-ZCU008M4-003.
-               PERFORM CALL-ZCU00C8E-004.
-               PERFORM CALL-ZCL002FD-005.
-               PERFORM CALL-ZPA003QP-006.
-               PERFORM CALL-ZMT0255L-007.
-               PERFORM RESOLVE-BROKER-ID-0002.
+               PERFORM CALL-ZCU00H01-001.
+               PERFORM CALL-ZCU00IJW-002.
+               PERFORM CALL-ZBI0255Q-003.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCU00H6Q-001.
-               EXEC CICS LINK PROGRAM('ZCU00H6Q')
+       CALL-ZCU00H01-001.
+               EXEC CICS LINK PROGRAM('ZCU00H01')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00H6Q FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU00H01 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU00A1I-002.
-               EXEC CICS LINK PROGRAM('ZCU00A1I')
+       CALL-ZCU00IJW-002.
+               EXEC CICS LINK PROGRAM('ZCU00IJW')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00A1I FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU00IJW FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU008M4-003.
-               EXEC CICS LINK PROGRAM('ZCU008M4')
+       CALL-ZBI0255Q-003.
+               MOVE 'ZBI0255Q' TO WS-PROGNAME-7
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-7)
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU008M4 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI0255Q FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCU00C8E-004.
-               EXEC CICS LINK PROGRAM('ZCU00C8E')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00C8E FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCL002FD-005.
-               EXEC CICS XCTL PROGRAM('ZCL002FD')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL002FD FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZPA003QP-006.
-               EXEC CICS START TRANSID('Z3QP')
-                         FROM(WS-KEY-AREA)
-                         LENGTH(20)
-                         RESP(WS-RESP)
-               END-EXEC.
-      * TRANSID Z3QP is defined against ZPA003QP
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA003QP FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZMT0255L-007.
-               EXEC CICS LINK PROGRAM('ZMT0255L')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT0255L FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-SUM-ASSURED-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RESOLVE-BROKER-ID-0002.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

@@ -56,20 +56,22 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
                 05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN00H65              PIC X(8) VALUE 'ZEN00H65'.
-       01  MOD-ZEN0094P              PIC X(8) VALUE 'ZEN0094P'.
-       01  MOD-ZEN00C0B              PIC X(8) VALUE 'ZEN00C0B'.
-       01  MOD-ZMT0255L              PIC X(8) VALUE 'ZMT0255L'.
+       01  MOD-ZAV00K2J              PIC X(8) VALUE 'ZAV00K2J'.
+       01  MOD-ZEN00IWO              PIC X(8) VALUE 'ZEN00IWO'.
+       01  MOD-ZEN00GB7              PIC X(8) VALUE 'ZEN00GB7'.
+       01  MOD-ZEN00KKL              PIC X(8) VALUE 'ZEN00KKL'.
+       01  MOD-ZEN00K4H              PIC X(8) VALUE 'ZEN00K4H'.
+       01  MOD-ZHO0255M              PIC X(8) VALUE 'ZHO0255M'.
 
       * BMS mapset copy
-           COPY ZENMAP01.
+           COPY ZENMAP05.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -77,8 +79,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKEN0006.
-               COPY ZKEN0000.
+               COPY ZKEN0052.
+               COPY ZKEN0011.
+               COPY ZKEN0022.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -92,107 +95,175 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGVS')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZEN00H65-001.
-               PERFORM CALL-ZEN0094P-002.
-               PERFORM CALL-ZEN00C0B-003.
-               PERFORM NORMALISE-NCD-YEARS-0001.
-               PERFORM NORMALISE-POSTCODE-0002.
-               PERFORM CHECK-MAKE-0003.
-               PERFORM APPLY-WITH-PROFITS-0004.
-               PERFORM VALIDATE-SUM-ASSURED-0005.
-               PERFORM AUDIT-TAX-BAND-0006.
+               PERFORM CALL-ZAV00K2J-001.
+               PERFORM CALL-ZEN00IWO-002.
+               PERFORM CALL-ZEN00GB7-003.
+               PERFORM CALL-ZEN00KKL-004.
+               PERFORM CALL-ZEN00K4H-005.
+               PERFORM NORMALISE-PREMIUM-0001.
+               PERFORM EXPAND-WITH-PROFITS-0002.
+               PERFORM CHECK-AGENT-CODE-0003.
+               PERFORM APPLY-REG-NUMBER-0004.
+               PERFORM RECONCILE-MODEL-0005.
+               PERFORM CHECK-TERM-0006.
                PERFORM SEND-RECEIVE-MAP-0007.
-               PERFORM REFRESH-WITH-PROFITS-0008.
-               PERFORM AUDIT-COLOUR-0009.
-               PERFORM NORMALISE-EXCESS-0010.
-               PERFORM DERIVE-HOUSE-TYPE-0011.
+               PERFORM AUDIT-VALUE-0008.
+               PERFORM AUDIT-BEDROOMS-0009.
+               PERFORM RESOLVE-COLOUR-0010.
+               PERFORM VALIDATE-POSTCODE-0011.
+               PERFORM FORMAT-POSTCODE-0012.
+               PERFORM CHECK-WITH-PROFITS-0013.
+               PERFORM SEND-RECEIVE-MAP-0014.
+               PERFORM RECONCILE-STATUS-CODE-0015.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZEN00H65-001.
-               EXEC CICS LINK PROGRAM('ZEN00H65')
+       CALL-ZAV00K2J-001.
+               EXEC CICS LINK PROGRAM('ZAV00K2J')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00H65 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAV00K2J FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN0094P-002.
-               EXEC CICS LINK PROGRAM('ZEN0094P')
+       CALL-ZEN00IWO-002.
+               EXEC CICS LINK PROGRAM('ZEN00IWO')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN0094P FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00IWO FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN00C0B-003.
-               EXEC CICS LINK PROGRAM('ZEN00C0B')
+       CALL-ZEN00GB7-003.
+               EXEC CICS LINK PROGRAM('ZEN00GB7')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00C0B FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00GB7 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT0255L-004.
-               EXEC CICS LINK PROGRAM('ZMT0255L')
+       CALL-ZEN00KKL-004.
+               EXEC CICS LINK PROGRAM('ZEN00KKL')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT0255L FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00KKL FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       NORMALISE-NCD-YEARS-0001.
+       CALL-ZEN00K4H-005.
+               EXEC CICS LINK PROGRAM('ZEN00K4H')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZEN00K4H FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZHO0255M-006.
+               EXEC CICS LINK PROGRAM('ZHO0255M')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZHO0255M FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       NORMALISE-PREMIUM-0001.
                UNSTRING WS-KEY-CHAR DELIMITED BY '/'
                              INTO WS-KEY-CUSTOMER
                                   WS-KEY-POLICY
                END-UNSTRING.
       *----------------------------------------------------------------*
-       NORMALISE-POSTCODE-0002.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
+       EXPAND-WITH-PROFITS-0002.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
       *----------------------------------------------------------------*
-       CHECK-MAKE-0003.
-               MOVE 'MAKE' TO WS-T-AMOUNT(1)
+       CHECK-AGENT-CODE-0003.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       APPLY-REG-NUMBER-0004.
+               MOVE 'REG-NUMBER' TO WS-T-AMOUNT(1)
                SEARCH ALL WS-TABLE-ENTRY
                   AT END MOVE '01' TO WS-STATUS-CODE
                   WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
                        CONTINUE
                END-SEARCH.
       *----------------------------------------------------------------*
-       APPLY-WITH-PROFITS-0004.
+       RECONCILE-MODEL-0005.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO MODEL' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       CHECK-TERM-0006.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       SEND-RECEIVE-MAP-0007.
+               EXEC CICS SEND MAP('ZENMAP0I')
+                         MAPSET('ZENMAP05')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZENMAP0I')
+                         MAPSET('ZENMAP05')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       AUDIT-VALUE-0008.
+               MOVE 'VALUE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       AUDIT-BEDROOMS-0009.
                UNSTRING WS-KEY-CHAR DELIMITED BY '/'
                              INTO WS-KEY-CUSTOMER
                                   WS-KEY-POLICY
                END-UNSTRING.
       *----------------------------------------------------------------*
-       VALIDATE-SUM-ASSURED-0005.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
+       RESOLVE-COLOUR-0010.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+               END-UNSTRING.
       *----------------------------------------------------------------*
-       AUDIT-TAX-BAND-0006.
+       VALIDATE-POSTCODE-0011.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
                          + WS-T-AMOUNT(WS-SUB) / 10
@@ -201,26 +272,7 @@
                   MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0007.
-               EXEC CICS SEND MAP('ZENMAP0I')
-                         MAPSET('ZENMAP01')
-                         ERASE
-                         RESP(WS-RESP)
-               END-EXEC.
-               EXEC CICS RECEIVE MAP('ZENMAP0I')
-                         MAPSET('ZENMAP01')
-                         RESP(WS-RESP)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       REFRESH-WITH-PROFITS-0008.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO WITH-PROFITS' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-COLOUR-0009.
+       FORMAT-POSTCODE-0012.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -229,17 +281,33 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       NORMALISE-EXCESS-0010.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       CHECK-WITH-PROFITS-0013.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
       *----------------------------------------------------------------*
-       DERIVE-HOUSE-TYPE-0011.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       SEND-RECEIVE-MAP-0014.
+               EXEC CICS SEND MAP('ZENMAP0I')
+                         MAPSET('ZENMAP05')
+                         ERASE
+                         RESP(WS-RESP)
+               END-EXEC.
+               EXEC CICS RECEIVE MAP('ZENMAP0I')
+                         MAPSET('ZENMAP05')
+                         RESP(WS-RESP)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RECONCILE-STATUS-CODE-0015.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

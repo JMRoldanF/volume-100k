@@ -86,21 +86,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-AGENT-CODE     PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-VALUE          PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO01SYE              PIC X(8) VALUE 'ZHO01SYE'.
-       01  MOD-ZPA01CW9              PIC X(8) VALUE 'ZPA01CW9'.
-       01  MOD-ZBI01Q3G              PIC X(8) VALUE 'ZBI01Q3G'.
-       01  MOD-ZPA01JJ5              PIC X(8) VALUE 'ZPA01JJ5'.
-       01  MOD-ZPA01OLX              PIC X(8) VALUE 'ZPA01OLX'.
+       01  MOD-ZPA01IT9              PIC X(8) VALUE 'ZPA01IT9'.
+       01  MOD-ZPA01DNX              PIC X(8) VALUE 'ZPA01DNX'.
+       01  MOD-ZPA01L3F              PIC X(8) VALUE 'ZPA01L3F'.
+       01  MOD-ZPA01OKS              PIC X(8) VALUE 'ZPA01OKS'.
+       01  MOD-ZPA01Q8C              PIC X(8) VALUE 'ZPA01Q8C'.
 
       * Dynamically resolved module names
-       01  WS-SUBNAME-8              PIC X(8) VALUE SPACES.
+       01  WS-SUBNAME-5              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -115,23 +115,12 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZHO01O20-001.
-               PERFORM CALL-ZPA01CW9-003.
-               PERFORM CALL-ZBI01Q3G-004.
-               PERFORM CALL-ZPA01JJ5-005.
-               PERFORM CALL-ZPA01OLX-006.
-               PERFORM COMPUTE-EXCESS-0001.
-               PERFORM COMPUTE-POSTCODE-0002.
-               PERFORM RESOLVE-BROKER-ID-0003.
-               PERFORM VALIDATE-EXCESS-0004.
-               PERFORM RESOLVE-NCD-YEARS-0005.
-               PERFORM RECONCILE-EXCESS-0006.
-               PERFORM FORMAT-WITH-PROFITS-0007.
-               PERFORM REFRESH-CC-RATING-0008.
-               PERFORM EXPAND-BEDROOMS-0009.
-               PERFORM REFRESH-STATUS-CODE-0010.
-               PERFORM CHECK-CC-RATING-0011.
-               PERFORM RECONCILE-STATUS-CODE-0012.
+               PERFORM CALL-ZPA01IT9-001.
+               PERFORM CALL-ZPA01DNX-002.
+               PERFORM CALL-ZPA01L3F-003.
+               PERFORM CALL-ZPA01PNC-004.
+               PERFORM CALL-ZPA01OKS-005.
+               PERFORM CALL-ZPA01Q8C-006.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -144,164 +133,54 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZHO01O20-001.
-               MOVE 'ZHO01O20' TO WS-SUBNAME-8
-               CALL WS-SUBNAME-8 USING DFHCOMMAREA
+       CALL-ZPA01IT9-001.
+               CALL 'ZPA01IT9' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01O20 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01IT9 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01SYE-002.
-               CALL 'ZHO01SYE' USING DFHCOMMAREA
+       CALL-ZPA01DNX-002.
+               CALL 'ZPA01DNX' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01SYE FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01DNX FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01CW9-003.
-               CALL 'ZPA01CW9' USING DFHCOMMAREA
+       CALL-ZPA01L3F-003.
+               CALL 'ZPA01L3F' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01CW9 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01L3F FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI01Q3G-004.
-               CALL 'ZBI01Q3G' USING DFHCOMMAREA
+       CALL-ZPA01PNC-004.
+               MOVE 'ZPA01PNC' TO WS-SUBNAME-5
+               CALL WS-SUBNAME-5 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01Q3G FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01PNC FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01JJ5-005.
-               CALL 'ZPA01JJ5' USING DFHCOMMAREA
+       CALL-ZPA01OKS-005.
+               CALL 'ZPA01OKS' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01JJ5 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01OKS FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01OLX-006.
-               CALL 'ZPA01OLX' USING DFHCOMMAREA
+       CALL-ZPA01Q8C-006.
+               CALL 'ZPA01Q8C' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01OLX FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01Q8C FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       COMPUTE-EXCESS-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       COMPUTE-POSTCODE-0002.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       RESOLVE-BROKER-ID-0003.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       VALIDATE-EXCESS-0004.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RESOLVE-NCD-YEARS-0005.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       RECONCILE-EXCESS-0006.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       FORMAT-WITH-PROFITS-0007.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       REFRESH-CC-RATING-0008.
-               MOVE 'CC-RATING' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       EXPAND-BEDROOMS-0009.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       REFRESH-STATUS-CODE-0010.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 5
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       CHECK-CC-RATING-0011.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RECONCILE-STATUS-CODE-0012.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

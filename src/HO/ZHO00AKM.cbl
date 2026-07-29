@@ -56,18 +56,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
+                05 WS-T-VALUE          PIC X(12).
                 05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
                 05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO00VMO              PIC X(8) VALUE 'ZHO00VMO'.
-       01  MOD-ZCU00ZIQ              PIC X(8) VALUE 'ZCU00ZIQ'.
-       01  MOD-ZHO01A4M              PIC X(8) VALUE 'ZHO01A4M'.
-       01  MOD-ZHO0140C              PIC X(8) VALUE 'ZHO0140C'.
-       01  MOD-ZAG0255S              PIC X(8) VALUE 'ZAG0255S'.
+       01  MOD-ZSL00ZMU              PIC X(8) VALUE 'ZSL00ZMU'.
+       01  MOD-ZHO014FZ              PIC X(8) VALUE 'ZHO014FZ'.
+       01  MOD-ZHO019JT              PIC X(8) VALUE 'ZHO019JT'.
+       01  MOD-ZHO01PL7              PIC X(8) VALUE 'ZHO01PL7'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -75,8 +74,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKHO0028.
-               COPY ZKHO0031.
+               COPY ZKHO0017.
+               COPY ZKHO0004.
+               COPY ZKHO0026.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -95,98 +95,91 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZHO00VMO-001.
-               PERFORM CALL-ZCU00ZIQ-002.
-               PERFORM CALL-ZHO01A4M-003.
-               PERFORM CALL-ZHO0140C-004.
-               PERFORM CALL-ZAG0255S-005.
-               PERFORM EXPAND-STATUS-CODE-0002.
-               PERFORM AUDIT-WITH-PROFITS-0003.
-               PERFORM EXPAND-MANAGED-FUND-0004.
+               PERFORM CALL-ZSL00ZMU-001.
+               PERFORM CALL-ZHO014FZ-002.
+               PERFORM CALL-ZHO019JT-003.
+               PERFORM CALL-ZHO01PL7-004.
+               PERFORM RESOLVE-MANAGED-FUND-0001.
+               PERFORM NORMALISE-HOUSE-TYPE-0002.
+               PERFORM EXPAND-REG-NUMBER-0004.
+               PERFORM CHECK-TERM-0005.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZHO00VMO-001.
-               EXEC CICS LINK PROGRAM('ZHO00VMO')
+       CALL-ZSL00ZMU-001.
+               EXEC CICS LINK PROGRAM('ZSL00ZMU')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO00VMO FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZSL00ZMU FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU00ZIQ-002.
-               EXEC CICS LINK PROGRAM('ZCU00ZIQ')
+       CALL-ZHO014FZ-002.
+               EXEC CICS LINK PROGRAM('ZHO014FZ')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00ZIQ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO014FZ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01A4M-003.
-               EXEC CICS LINK PROGRAM('ZHO01A4M')
+       CALL-ZHO019JT-003.
+               EXEC CICS LINK PROGRAM('ZHO019JT')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01A4M FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO019JT FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO0140C-004.
-               EXEC CICS LINK PROGRAM('ZHO0140C')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
+       CALL-ZHO01PL7-004.
+               CALL 'ZHO01PL7' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO0140C FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01PL7 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG0255S-005.
-               EXEC CICS LINK PROGRAM('ZAG0255S')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG0255S FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       RESOLVE-MANAGED-FUND-0001.
+               MOVE 'MANAGED-FU' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
-       APPLY-MODEL-0001.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-STATUS-CODE-0002.
+       NORMALISE-HOUSE-TYPE-0002.
                UNSTRING WS-KEY-CHAR DELIMITED BY '/'
                              INTO WS-KEY-CUSTOMER
                                   WS-KEY-POLICY
                END-UNSTRING.
       *----------------------------------------------------------------*
-       AUDIT-WITH-PROFITS-0003.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 7
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+       CHECK-COLOUR-0003.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO COLOUR' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-MANAGED-FUND-0004.
+       EXPAND-REG-NUMBER-0004.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       CHECK-TERM-0005.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 12
+                         + WS-T-AMOUNT(WS-SUB) / 8
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
                   MOVE ZERO TO WS-PREMIUM-TOTAL

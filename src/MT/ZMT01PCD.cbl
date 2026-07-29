@@ -57,14 +57,14 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
                 05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZBI01DAC              PIC X(8) VALUE 'ZBI01DAC'.
+       01  MOD-ZMT01RCG              PIC X(8) VALUE 'ZMT01RCG'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -72,8 +72,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0025.
-               COPY ZKMT0031.
+               COPY ZKMT0035.
+               COPY ZKMT0028.
+               COPY ZKMT0049.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -87,30 +88,21 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGCA')
+                  EXEC CICS ABEND ABCODE('LGRC')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZBI01DAC-001.
-               PERFORM FORMAT-TAX-BAND-0001.
+               PERFORM CALL-ZMT01RCG-001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZBI01DAC-001.
-               CALL 'ZBI01DAC' USING DFHCOMMAREA
+       CALL-ZMT01RCG-001.
+               CALL 'ZMT01RCG' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01DAC FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01RCG FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-TAX-BAND-0001.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

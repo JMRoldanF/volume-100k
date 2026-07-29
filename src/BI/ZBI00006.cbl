@@ -56,22 +56,22 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
                 05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-TERM           PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZBI00DZS              PIC X(8) VALUE 'ZBI00DZS'.
-       01  MOD-ZBI00BUA              PIC X(8) VALUE 'ZBI00BUA'.
-       01  MOD-ZBI00E0W              PIC X(8) VALUE 'ZBI00E0W'.
-       01  MOD-ZBI00CXQ              PIC X(8) VALUE 'ZBI00CXQ'.
-       01  MOD-ZBI00EO8              PIC X(8) VALUE 'ZBI00EO8'.
-       01  MOD-ZMT0255L              PIC X(8) VALUE 'ZMT0255L'.
+       01  MOD-ZQU00CHN              PIC X(8) VALUE 'ZQU00CHN'.
+       01  MOD-ZBI00DP5              PIC X(8) VALUE 'ZBI00DP5'.
+       01  MOD-ZBI00CDK              PIC X(8) VALUE 'ZBI00CDK'.
+
+      * Dynamically resolved module names
+       01  WS-PROGNAME-3             PIC X(8) VALUE SPACES.
 
       * BMS mapset copy
-           COPY ZBIMAP06.
+           COPY ZBIMAP00.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -79,9 +79,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKBI0053.
-               COPY ZKBI0056.
-               COPY ZKBI0041.
+               COPY ZKBI0054.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -95,76 +93,53 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGSQ')
+                  EXEC CICS ABEND ABCODE('LGTS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZBI00DZS-001.
-               PERFORM CALL-ZBI00BUA-002.
-               PERFORM CALL-ZBI00E0W-003.
-               PERFORM CALL-ZBI00CXQ-004.
-               PERFORM CALL-ZBI00EO8-005.
-               PERFORM CALL-ZMT0255L-006.
+               PERFORM CALL-ZQU00CHN-001.
+               PERFORM CALL-ZBI00DP5-002.
+               PERFORM CALL-ZBI00CDK-003.
+               PERFORM CALL-ZMT0255L-004.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZBI00DZS-001.
-               EXEC CICS LINK PROGRAM('ZBI00DZS')
+       CALL-ZQU00CHN-001.
+               EXEC CICS LINK PROGRAM('ZQU00CHN')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00DZS FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZQU00CHN FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI00BUA-002.
-               EXEC CICS LINK PROGRAM('ZBI00BUA')
+       CALL-ZBI00DP5-002.
+               EXEC CICS LINK PROGRAM('ZBI00DP5')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00BUA FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI00DP5 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI00E0W-003.
-               EXEC CICS LINK PROGRAM('ZBI00E0W')
+       CALL-ZBI00CDK-003.
+               EXEC CICS LINK PROGRAM('ZBI00CDK')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00E0W FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI00CDK FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI00CXQ-004.
-               EXEC CICS LINK PROGRAM('ZBI00CXQ')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00CXQ FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZBI00EO8-005.
-               EXEC CICS LINK PROGRAM('ZBI00EO8')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00EO8 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZMT0255L-006.
-               EXEC CICS LINK PROGRAM('ZMT0255L')
+       CALL-ZMT0255L-004.
+               MOVE 'ZMT0255L' TO WS-PROGNAME-3
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-3)
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)

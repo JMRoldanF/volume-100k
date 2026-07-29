@@ -56,20 +56,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-TERM           PIC X(12).
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN00ZIZ              PIC X(8) VALUE 'ZEN00ZIZ'.
-       01  MOD-ZEN00Y63              PIC X(8) VALUE 'ZEN00Y63'.
-       01  MOD-ZEN01U25              PIC X(8) VALUE 'ZEN01U25'.
-
-      * Dynamically resolved module names
-       01  WS-PROGNAME-2             PIC X(8) VALUE SPACES.
-       01  WS-PROGNAME-3             PIC X(8) VALUE SPACES.
+       01  MOD-ZEN00Z1G              PIC X(8) VALUE 'ZEN00Z1G'.
+       01  MOD-ZEN01C1D              PIC X(8) VALUE 'ZEN01C1D'.
+       01  MOD-ZEN01QZQ              PIC X(8) VALUE 'ZEN01QZQ'.
+       01  MOD-ZEN01IBH              PIC X(8) VALUE 'ZEN01IBH'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -77,7 +74,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKEN0012.
+               COPY ZKEN0019.
+               COPY ZKEN0015.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -91,87 +89,54 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGVS')
+                  EXEC CICS ABEND ABCODE('LGRC')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZEN00ZIZ-001.
-               PERFORM CALL-ZEN00Y63-002.
-               PERFORM CALL-ZEN01U25-004.
-               PERFORM CALL-ZHO0255M-005.
-               PERFORM DERIVE-NCD-YEARS-0001.
-               PERFORM RESOLVE-SUM-ASSURED-0002.
+               PERFORM CALL-ZEN00Z1G-001.
+               PERFORM CALL-ZEN01C1D-002.
+               PERFORM CALL-ZEN01QZQ-003.
+               PERFORM CALL-ZEN01IBH-004.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZEN00ZIZ-001.
-               EXEC CICS LINK PROGRAM('ZEN00ZIZ')
+       CALL-ZEN00Z1G-001.
+               EXEC CICS LINK PROGRAM('ZEN00Z1G')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00ZIZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00Z1G FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN00Y63-002.
-               EXEC CICS LINK PROGRAM('ZEN00Y63')
+       CALL-ZEN01C1D-002.
+               EXEC CICS LINK PROGRAM('ZEN01C1D')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00Y63 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01C1D FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN00ZVR-003.
-               MOVE 'ZEN00ZVR' TO WS-PROGNAME-2
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-2)
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00ZVR FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZEN01U25-004.
-               CALL 'ZEN01U25' USING DFHCOMMAREA
+       CALL-ZEN01QZQ-003.
+               CALL 'ZEN01QZQ' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01U25 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01QZQ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO0255M-005.
-               MOVE 'ZHO0255M' TO WS-PROGNAME-3
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-3)
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
+       CALL-ZEN01IBH-004.
+               CALL 'ZEN01IBH' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO0255M FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01IBH FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       DERIVE-NCD-YEARS-0001.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       RESOLVE-SUM-ASSURED-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

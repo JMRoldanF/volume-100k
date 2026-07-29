@@ -56,23 +56,23 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
                 05 WS-T-VALUE          PIC X(12).
                 05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO009O4              PIC X(8) VALUE 'ZHO009O4'.
-       01  MOD-ZBI00JH0              PIC X(8) VALUE 'ZBI00JH0'.
-       01  MOD-ZHO007S2              PIC X(8) VALUE 'ZHO007S2'.
-       01  MOD-ZHO008TA              PIC X(8) VALUE 'ZHO008TA'.
+       01  MOD-ZHO00BJP              PIC X(8) VALUE 'ZHO00BJP'.
+       01  MOD-ZHO007YQ              PIC X(8) VALUE 'ZHO007YQ'.
+       01  MOD-ZHO00AO7              PIC X(8) VALUE 'ZHO00AO7'.
 
       * Dynamically resolved module names
-       01  WS-PROGNAME-3             PIC X(8) VALUE SPACES.
+       01  WS-PROGNAME-1             PIC X(8) VALUE SPACES.
+       01  WS-PROGNAME-2             PIC X(8) VALUE SPACES.
 
       * BMS mapset copy
-           COPY ZHOMAP09.
+           COPY ZHOMAP41.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -80,8 +80,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKHO0001.
-               COPY ZKHO0011.
+               COPY ZKHO0044.
+               COPY ZKHO0051.
+               COPY ZKHO0042.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -95,71 +96,72 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGCA')
+                  EXEC CICS ABEND ABCODE('LGVS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZHO009O4-001.
-               PERFORM CALL-ZBI00JH0-002.
-               PERFORM CALL-ZEN008VT-003.
-               PERFORM CALL-ZHO007S2-004.
-               PERFORM CALL-ZHO008TA-005.
+               PERFORM CALL-ZHO00BJP-001.
+               PERFORM CALL-ZHO007YQ-002.
+               PERFORM CALL-ZHO00AO7-003.
+               PERFORM CALL-ZHO00I5J-004.
+               PERFORM CALL-ZHO00CUO-005.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZHO009O4-001.
-               EXEC CICS LINK PROGRAM('ZHO009O4')
+       CALL-ZHO00BJP-001.
+               EXEC CICS LINK PROGRAM('ZHO00BJP')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO009O4 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00BJP FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI00JH0-002.
-               EXEC CICS LINK PROGRAM('ZBI00JH0')
+       CALL-ZHO007YQ-002.
+               EXEC CICS LINK PROGRAM('ZHO007YQ')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00JH0 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO007YQ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN008VT-003.
-               MOVE 'ZEN008VT' TO WS-PROGNAME-3
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-3)
+       CALL-ZHO00AO7-003.
+               EXEC CICS LINK PROGRAM('ZHO00AO7')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN008VT FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00AO7 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO007S2-004.
-               EXEC CICS LINK PROGRAM('ZHO007S2')
+       CALL-ZHO00I5J-004.
+               MOVE 'ZHO00I5J' TO WS-PROGNAME-1
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-1)
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO007S2 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00I5J FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO008TA-005.
-               EXEC CICS LINK PROGRAM('ZHO008TA')
+       CALL-ZHO00CUO-005.
+               MOVE 'ZHO00CUO' TO WS-PROGNAME-2
+               EXEC CICS LINK PROGRAM(WS-PROGNAME-2)
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO008TA FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00CUO FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

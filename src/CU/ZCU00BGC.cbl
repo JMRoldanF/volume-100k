@@ -56,17 +56,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
+                05 WS-T-HOUSE-TYPE     PIC X(12).
                 05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU00NGK              PIC X(8) VALUE 'ZCU00NGK'.
-       01  MOD-ZCU00O50              PIC X(8) VALUE 'ZCU00O50'.
-       01  MOD-ZCU01B48              PIC X(8) VALUE 'ZCU01B48'.
-       01  MOD-ZMT01N8J              PIC X(8) VALUE 'ZMT01N8J'.
+       01  MOD-ZSL00QSM              PIC X(8) VALUE 'ZSL00QSM'.
+       01  MOD-ZCU00PL2              PIC X(8) VALUE 'ZCU00PL2'.
+       01  MOD-ZCU019OD              PIC X(8) VALUE 'ZCU019OD'.
+       01  MOD-ZBI0255Q              PIC X(8) VALUE 'ZBI0255Q'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -74,7 +74,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCU0011.
+               COPY ZKCU0033.
+               COPY ZKCU0009.
+               COPY ZKCU0040.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -88,93 +90,59 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGDL')
+                  EXEC CICS ABEND ABCODE('LGVS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCU00NGK-001.
-               PERFORM CALL-ZCU00O50-002.
-               PERFORM CALL-ZMT01N8J-004.
-               PERFORM EXPAND-AGENT-CODE-0001.
-               PERFORM NORMALISE-TERM-0002.
-               PERFORM RECONCILE-BROKER-ID-0003.
-               PERFORM NORMALISE-EXCESS-0004.
+               PERFORM CALL-ZSL00QSM-001.
+               PERFORM CALL-ZCU00PL2-002.
+               PERFORM CALL-ZCU019OD-003.
+               PERFORM CALL-ZBI0255Q-004.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCU00NGK-001.
-               EXEC CICS LINK PROGRAM('ZCU00NGK')
+       CALL-ZSL00QSM-001.
+               EXEC CICS LINK PROGRAM('ZSL00QSM')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00NGK FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZSL00QSM FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU00O50-002.
-               EXEC CICS LINK PROGRAM('ZCU00O50')
+       CALL-ZCU00PL2-002.
+               EXEC CICS LINK PROGRAM('ZCU00PL2')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00O50 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU00PL2 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU01B48-003.
-               EXEC CICS LINK PROGRAM('ZCU01B48')
+       CALL-ZCU019OD-003.
+               EXEC CICS LINK PROGRAM('ZCU019OD')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01B48 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU019OD FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01N8J-004.
-               CALL 'ZMT01N8J' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
+       CALL-ZBI0255Q-004.
+               EXEC CICS LINK PROGRAM('ZBI0255Q')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01N8J FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBI0255Q FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       EXPAND-AGENT-CODE-0001.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO AGENT-CODE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-TERM-0002.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       RECONCILE-BROKER-ID-0003.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 8
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       NORMALISE-EXCESS-0004.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 10
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

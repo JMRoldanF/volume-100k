@@ -56,16 +56,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-CC-RATING      PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZBI00NK8              PIC X(8) VALUE 'ZBI00NK8'.
-       01  MOD-ZRE00MCX              PIC X(8) VALUE 'ZRE00MCX'.
-       01  MOD-ZPA012CT              PIC X(8) VALUE 'ZPA012CT'.
+       01  MOD-ZPA00V7U              PIC X(8) VALUE 'ZPA00V7U'.
+       01  MOD-ZPT00TOH              PIC X(8) VALUE 'ZPT00TOH'.
+       01  MOD-ZPA01A2I              PIC X(8) VALUE 'ZPA01A2I'.
+       01  MOD-ZPA01OWR              PIC X(8) VALUE 'ZPA01OWR'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -73,9 +74,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKPA0002.
-               COPY ZKPA0016.
-               COPY ZKPA0014.
+               COPY ZKPA0036.
+               COPY ZKPA0026.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -94,42 +94,91 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZBI00NK8-001.
-               PERFORM CALL-ZRE00MCX-002.
-               PERFORM CALL-ZPA012CT-003.
+               PERFORM CALL-ZPA00V7U-001.
+               PERFORM CALL-ZPT00TOH-002.
+               PERFORM CALL-ZPA01A2I-003.
+               PERFORM CALL-ZPA01OWR-004.
+               PERFORM EXPAND-REG-NUMBER-0002.
+               PERFORM RECONCILE-HOUSE-TYPE-0003.
+               PERFORM AUDIT-EXCESS-0004.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZBI00NK8-001.
-               EXEC CICS LINK PROGRAM('ZBI00NK8')
+       CALL-ZPA00V7U-001.
+               EXEC CICS LINK PROGRAM('ZPA00V7U')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI00NK8 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA00V7U FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE00MCX-002.
-               EXEC CICS LINK PROGRAM('ZRE00MCX')
+       CALL-ZPT00TOH-002.
+               EXEC CICS LINK PROGRAM('ZPT00TOH')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE00MCX FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPT00TOH FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA012CT-003.
-               EXEC CICS LINK PROGRAM('ZPA012CT')
+       CALL-ZPA01A2I-003.
+               EXEC CICS LINK PROGRAM('ZPA01A2I')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA012CT FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01A2I FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZPA01OWR-004.
+               CALL 'ZPA01OWR' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZPA01OWR FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       APPLY-EXCESS-0001.
+               IF WS-KEY-CUSTOMER = ZERO
+                  MOVE ' NO EXCESS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+               ELSE
+                  MOVE '00' TO WS-STATUS-CODE
+               END-IF.
+      *----------------------------------------------------------------*
+       EXPAND-REG-NUMBER-0002.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       RECONCILE-HOUSE-TYPE-0003.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       AUDIT-EXCESS-0004.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 11
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

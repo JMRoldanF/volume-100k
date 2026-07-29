@@ -4,6 +4,7 @@
       *
       *  Generated volume-test source. Layer 3,
       *  type subroutine, domain MOTOR.
+      *  Tags: chain, chain-head
       ******************************************************************
        IDENTIFICATION DIVISION.
        PROGRAM-ID. ZMT01T8N.
@@ -57,14 +58,13 @@
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
                 05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-AGENT-CODE     PIC X(12).
-                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01IJX              PIC X(8) VALUE 'ZMT01IJX'.
-       01  MOD-ZCL0255P              PIC X(8) VALUE 'ZCL0255P'.
+       01  MOD-ZMT01FGB              PIC X(8) VALUE 'ZMT01FGB'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -72,9 +72,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKMT0037.
-               COPY ZKMT0025.
-               COPY ZKMT0041.
+               COPY ZKMT0010.
+               COPY ZKMT0056.
+               COPY ZKMT0030.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -88,31 +88,19 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGTS')
+                  EXEC CICS ABEND ABCODE('LGVS')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZMT01IJX-001.
-               PERFORM CALL-ZCL0255P-002.
+               PERFORM CALL-ZMT01FGB-001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZMT01IJX-001.
-               CALL 'ZMT01IJX' USING DFHCOMMAREA
+       CALL-ZMT01FGB-001.
+               CALL 'ZMT01FGB' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01IJX FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZCL0255P-002.
-               EXEC CICS LINK PROGRAM('ZCL0255P')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCL0255P FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01FGB FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

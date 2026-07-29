@@ -57,10 +57,10 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
 	   03 ws-table-entry occurs 1 to 250 times
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MAKE           PIC X(12).
-	      05 ws-t-status-code    pic x(12).
                 05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
+	      05 ws-t-agent-code     pic x(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
 	      05 ws-t-amount           pic s9(7)v99 comp-3.
 
       ******************************************************************
@@ -82,68 +82,41 @@
 	     if eibcalen is equal to zero
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-	        exec cics abend abcode('lgca')
+	        exec cics abend abcode('lgsq')
                             NODUMP END-EXEC
                END-IF.
 	     move eibcalen to ws-calen.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM REFRESH-SUM-ASSURED-0001.
-	     perform compute-term-0002.
-               PERFORM RESOLVE-TERM-0003.
-               PERFORM REFRESH-MANAGED-FUND-0004.
-	     perform compute-colour-0005.
-               PERFORM FORMAT-SUM-ASSURED-0006.
-               PERFORM AUDIT-POSTCODE-0007.
-	     perform refresh-broker-id-0008.
-               PERFORM APPLY-BEDROOMS-0009.
-               PERFORM RECONCILE-PREMIUM-0010.
-	     perform validate-agent-code-0011.
-               PERFORM COMPUTE-VALUE-0013.
-               PERFORM VALIDATE-REG-NUMBER-0014.
-	     perform refresh-reg-number-0015.
-               PERFORM NORMALISE-TAX-BAND-0016.
-               PERFORM REFRESH-HOUSE-TYPE-0017.
-	     perform resolve-make-0018.
-               PERFORM VALIDATE-EXCESS-0019.
-               PERFORM REFRESH-CC-RATING-0020.
-	     perform validate-value-0021.
-               PERFORM APPLY-MANAGED-FUND-0023.
-               PERFORM EXPAND-MAKE-0024.
-	     perform validate-model-0025.
-               PERFORM CHECK-ROOF-TYPE-0026.
-               PERFORM NORMALISE-SUM-ASSURED-0027.
-	     perform compute-colour-0028.
-               PERFORM EXPAND-BEDROOMS-0029.
+               PERFORM REFRESH-MANAGED-FUND-0002.
+	     perform format-tax-band-0003.
+               PERFORM EXPAND-EQUITIES-0004.
+               PERFORM FORMAT-EXCESS-0005.
+	     perform expand-ncd-years-0006.
+               PERFORM VALIDATE-BROKER-ID-0007.
+               PERFORM AUDIT-COLOUR-0008.
+	     perform normalise-house-type-0009.
+               PERFORM APPLY-TAX-BAND-0010.
+               PERFORM AUDIT-AGENT-CODE-0012.
+	     perform audit-premium-0013.
+               PERFORM APPLY-MANAGED-FUND-0014.
+               PERFORM RECONCILE-MODEL-0015.
+	     perform derive-broker-id-0016.
+               PERFORM AUDIT-REG-NUMBER-0017.
+               PERFORM CHECK-COLOUR-0018.
+	     perform expand-ncd-years-0019.
+               PERFORM FORMAT-VALUE-0020.
+               PERFORM RESOLVE-BROKER-ID-0021.
+	     perform compute-bedrooms-0022.
+               PERFORM FORMAT-COLOUR-0023.
+               PERFORM REFRESH-SUM-ASSURED-0024.
+	     perform compute-value-0025.
+               PERFORM NORMALISE-BEDROOMS-0026.
+               PERFORM APPLY-TAX-BAND-0027.
+	     perform apply-postcode-0028.
+               PERFORM CHECK-BEDROOMS-0029.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       REFRESH-SUM-ASSURED-0001.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-	                 ws-premium-total * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 6
-                         - WS-PREMIUM-BAND.
-	     if ws-premium-total < zero
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       COMPUTE-TERM-0002.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-	                 ws-premium-total * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 8
-                         - WS-PREMIUM-BAND.
-	     if ws-premium-total < zero
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       RESOLVE-TERM-0003.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-	                 ws-premium-total * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 4
-                         - WS-PREMIUM-BAND.
-	     if ws-premium-total < zero
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       REFRESH-MANAGED-FUND-0004.
+       AUDIT-BROKER-ID-0001.
                PERFORM VARYING WS-IX FROM 1 BY 1
 	                 until ws-ix > ws-table-count
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -152,90 +125,24 @@
                   END-IF
                END-PERFORM.
       *----------------------------------------------------------------*
-       COMPUTE-COLOUR-0005.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-	     if ws-status-failed
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       FORMAT-SUM-ASSURED-0006.
-               EVALUATE TRUE
-	        when ws-premium-total < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-	             move 2 to ws-premium-band
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-	        when other
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       AUDIT-POSTCODE-0007.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-	     if ws-status-failed
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       REFRESH-BROKER-ID-0008.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-	     end-exec.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-	               time(time1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       apply-bedrooms-0009.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-	                        ws-key-policy
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       reconcile-premium-0010.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-	                        ws-key-policy
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       validate-agent-code-0011.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-	               + ws-t-amount(ws-sub) / 4
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-	        move zero to ws-premium-total
-               END-IF.
-      *----------------------------------------------------------------*
-       audit-managed-fund-0012.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-	        perform write-error-message
-               END-IF.
-      *----------------------------------------------------------------*
-       compute-value-0013.
-               MOVE 'VALUE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-	        at end move '01' to ws-status-code
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-	     end-search.
-      *----------------------------------------------------------------*
-       VALIDATE-REG-NUMBER-0014.
-	     if ws-key-customer = zero
-                  MOVE ' NO REG-NUMBER' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-	     else
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       REFRESH-REG-NUMBER-0015.
-               MOVE 'REG-NUMBER' TO WS-T-AMOUNT(1)
+       REFRESH-MANAGED-FUND-0002.
+               MOVE 'MANAGED-FU' TO WS-T-AMOUNT(1)
 	     search all ws-table-entry
                   AT END MOVE '01' TO WS-STATUS-CODE
                   WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
 	             continue
                END-SEARCH.
       *----------------------------------------------------------------*
-       normalise-tax-band-0016.
+       format-tax-band-0003.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+	        add ws-t-amount(ws-ix) to ws-premium-total
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+	        end-if
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       expand-equities-0004.
                EVALUATE TRUE
                   WHEN WS-PREMIUM-TOTAL < 999
 	             move 1 to ws-premium-band
@@ -247,16 +154,13 @@
 	             move 9 to ws-premium-band
                END-EVALUATE.
       *----------------------------------------------------------------*
-       refresh-house-type-0017.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-	               + ws-t-amount(ws-sub) / 8
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-	        move zero to ws-premium-total
-               END-IF.
+       format-excess-0005.
+               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
+                             INTO WS-KEY-CUSTOMER
+	                        ws-key-policy
+               END-UNSTRING.
       *----------------------------------------------------------------*
-       resolve-make-0018.
+       expand-ncd-years-0006.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME)
                END-EXEC.
 	     exec cics formattime abstime(abs-time)
@@ -264,16 +168,13 @@
                          TIME(TIME1)
 	     end-exec.
       *----------------------------------------------------------------*
-       VALIDATE-EXCESS-0019.
-	     compute ws-premium-total rounded =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 5
-	               - ws-premium-band.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-	     end-if.
+       VALIDATE-BROKER-ID-0007.
+	     unstring ws-key-char delimited by '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+	     end-unstring.
       *----------------------------------------------------------------*
-       REFRESH-CC-RATING-0020.
+       AUDIT-COLOUR-0008.
 	     evaluate true
                   WHEN WS-PREMIUM-TOTAL < 999
                        MOVE 1 TO WS-PREMIUM-BAND
@@ -285,23 +186,32 @@
                        MOVE 9 TO WS-PREMIUM-BAND
 	     end-evaluate.
       *----------------------------------------------------------------*
-       VALIDATE-VALUE-0021.
-	     move spaces to ws-key-char.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-	               ws-key-policy    delimited by size
-                         INTO WS-KEY-CHAR
-               END-STRING.
+       NORMALISE-HOUSE-TYPE-0009.
+	     perform varying ws-ix from 1 by 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+	        if ws-t-amount(ws-ix) = zero
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+	     end-perform.
       *----------------------------------------------------------------*
-       CHECK-ROOF-TYPE-0022.
-               IF WS-KEY-CUSTOMER = ZERO
-	        move ' no roof-type' to em-variable
+       APPLY-TAX-BAND-0010.
+	     if ws-key-customer = zero
+                  MOVE ' NO TAX-BAND' TO EM-VARIABLE
                   MOVE '01' TO WS-STATUS-CODE
-               ELSE
-	        move '00' to ws-status-code
+	     else
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       apply-managed-fund-0023.
+       NORMALISE-MODEL-0011.
+               MOVE SPACES TO WS-KEY-CHAR.
+	     string ws-key-customer delimited by size
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+	               into ws-key-char
+               END-STRING.
+      *----------------------------------------------------------------*
+       audit-agent-code-0012.
                EVALUATE TRUE
                   WHEN WS-PREMIUM-TOTAL < 999
 	             move 1 to ws-premium-band
@@ -313,7 +223,103 @@
 	             move 9 to ws-premium-band
                END-EVALUATE.
       *----------------------------------------------------------------*
-       expand-make-0024.
+       audit-premium-0013.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+	               '/'              delimited by size
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+	     end-string.
+      *----------------------------------------------------------------*
+       APPLY-MANAGED-FUND-0014.
+	     compute ws-premium-total rounded =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 8
+	               - ws-premium-band.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+	     end-if.
+      *----------------------------------------------------------------*
+       RECONCILE-MODEL-0015.
+	     unstring ws-key-char delimited by '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+	     end-unstring.
+      *----------------------------------------------------------------*
+       DERIVE-BROKER-ID-0016.
+	     inspect ws-key-char replacing all spaces by '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+	     end-if.
+      *----------------------------------------------------------------*
+       AUDIT-REG-NUMBER-0017.
+	     move spaces to ws-key-char.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+	               ws-key-policy    delimited by size
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       CHECK-COLOUR-0018.
+               MOVE 'COLOUR' TO WS-T-AMOUNT(1)
+	     search all ws-table-entry
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+	             continue
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       expand-ncd-years-0019.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+	               '/'              delimited by size
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+	     end-string.
+      *----------------------------------------------------------------*
+       FORMAT-VALUE-0020.
+	     exec cics asktime abstime(abs-time)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+	               mmddyyyy(date1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-BROKER-ID-0021.
+               EVALUATE TRUE
+	        when ws-premium-total < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+	             move 2 to ws-premium-band
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+	        when other
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       COMPUTE-BEDROOMS-0022.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+	                 until ws-ix > ws-table-count
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+	           add 1 to ws-entry-count
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       FORMAT-COLOUR-0023.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+	     end-exec.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+	               time(time1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       refresh-sum-assured-0024.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+	        perform write-error-message
+               END-IF.
+      *----------------------------------------------------------------*
+       compute-value-0025.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
 	        add ws-t-amount(ws-ix) to ws-premium-total
@@ -322,47 +328,35 @@
 	        end-if
                END-PERFORM.
       *----------------------------------------------------------------*
-       validate-model-0025.
+       normalise-bedrooms-0026.
                COMPUTE WS-PREMIUM-TOTAL ROUNDED =
                            WS-PREMIUM-TOTAL * 1.075
-	               + ws-t-amount(ws-sub) / 9
+	               + ws-t-amount(ws-sub) / 2
                          - WS-PREMIUM-BAND.
                IF WS-PREMIUM-TOTAL < ZERO
 	        move zero to ws-premium-total
                END-IF.
       *----------------------------------------------------------------*
-       check-roof-type-0026.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-	               + ws-t-amount(ws-sub) / 10
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-	        move zero to ws-premium-total
-               END-IF.
+       apply-tax-band-0027.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+	     exec cics formattime abstime(abs-time)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+	     end-exec.
       *----------------------------------------------------------------*
-       normalise-sum-assured-0027.
-               MOVE 'SUM-ASSURE' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-	        at end move '01' to ws-status-code
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-	     end-search.
+       APPLY-POSTCODE-0028.
+	     unstring ws-key-char delimited by '/'
+                             INTO WS-KEY-CUSTOMER
+                                  WS-KEY-POLICY
+	     end-unstring.
       *----------------------------------------------------------------*
-       COMPUTE-COLOUR-0028.
-	     move 'colour' to ws-t-amount(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-	        when ws-t-amount(ws-ix) = ws-premium-total
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       EXPAND-BEDROOMS-0029.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-	                 ws-premium-total * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 8
-                         - WS-PREMIUM-BAND.
-	     if ws-premium-total < zero
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+       CHECK-BEDROOMS-0029.
+	     if ws-key-customer = zero
+                  MOVE ' NO BEDROOMS' TO EM-VARIABLE
+                  MOVE '01' TO WS-STATUS-CODE
+	     else
+                  MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.

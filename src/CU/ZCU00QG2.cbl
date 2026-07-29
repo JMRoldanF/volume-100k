@@ -56,14 +56,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
                 05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU01MY2              PIC X(8) VALUE 'ZCU01MY2'.
+       01  MOD-ZBR01CT5              PIC X(8) VALUE 'ZBR01CT5'.
+
+      * Dynamically resolved module names
+       01  WS-SUBNAME-7              PIC X(8) VALUE SPACES.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -83,9 +86,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCU0021.
-               COPY ZKCU0053.
-               COPY ZKCU0004.
+               COPY ZKCU0024.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -104,14 +105,24 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCU01MY2-001.
+               PERFORM CALL-ZBR01CT5-001.
+               PERFORM CALL-ZCU01NXB-002.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCU01MY2-001.
-               CALL 'ZCU01MY2' USING DFHCOMMAREA
+       CALL-ZBR01CT5-001.
+               CALL 'ZBR01CT5' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01MY2 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZBR01CT5 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZCU01NXB-002.
+               MOVE 'ZCU01NXB' TO WS-SUBNAME-7
+               CALL WS-SUBNAME-7 USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCU01NXB FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

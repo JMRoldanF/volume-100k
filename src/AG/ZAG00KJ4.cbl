@@ -56,17 +56,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
                 05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZAG00XJ6              PIC X(8) VALUE 'ZAG00XJ6'.
-       01  MOD-ZAG012IM              PIC X(8) VALUE 'ZAG012IM'.
-       01  MOD-ZAG01KIE              PIC X(8) VALUE 'ZAG01KIE'.
-       01  MOD-ZAG01RF0              PIC X(8) VALUE 'ZAG01RF0'.
+       01  MOD-ZAG00XOK              PIC X(8) VALUE 'ZAG00XOK'.
+       01  MOD-ZAG012K1              PIC X(8) VALUE 'ZAG012K1'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -74,9 +72,7 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKAG0034.
-               COPY ZKAG0041.
-               COPY ZKAG0006.
+               COPY ZKAG0052.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -90,54 +86,89 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGRC')
+                  EXEC CICS ABEND ABCODE('LGCA')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZAG00XJ6-001.
-               PERFORM CALL-ZAG012IM-002.
-               PERFORM CALL-ZAG01KIE-003.
-               PERFORM CALL-ZAG01RF0-004.
+               PERFORM CALL-ZAG00XOK-001.
+               PERFORM CALL-ZAG012K1-002.
+               PERFORM VALIDATE-COLOUR-0001.
+               PERFORM FORMAT-HOUSE-TYPE-0002.
+               PERFORM DERIVE-ROOF-TYPE-0003.
+               PERFORM NORMALISE-EXCESS-0005.
+               PERFORM CHECK-HOUSE-TYPE-0006.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZAG00XJ6-001.
-               EXEC CICS LINK PROGRAM('ZAG00XJ6')
+       CALL-ZAG00XOK-001.
+               EXEC CICS LINK PROGRAM('ZAG00XOK')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG00XJ6 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG00XOK FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG012IM-002.
-               EXEC CICS LINK PROGRAM('ZAG012IM')
+       CALL-ZAG012K1-002.
+               EXEC CICS LINK PROGRAM('ZAG012K1')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG012IM FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG012K1 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01KIE-003.
-               CALL 'ZAG01KIE' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01KIE FAILED' TO EM-VARIABLE
+       VALIDATE-COLOUR-0001.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       FORMAT-HOUSE-TYPE-0002.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       DERIVE-ROOF-TYPE-0003.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01RF0-004.
-               CALL 'ZAG01RF0' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01RF0 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       APPLY-HOUSE-TYPE-0004.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
+      *----------------------------------------------------------------*
+       NORMALISE-EXCESS-0005.
+               MOVE 'EXCESS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
+      *----------------------------------------------------------------*
+       CHECK-HOUSE-TYPE-0006.
+               PERFORM VARYING WS-IX FROM 1 BY 1
+                           UNTIL WS-IX > WS-TABLE-COUNT
+                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
+                  IF WS-T-AMOUNT(WS-IX) = ZERO
+                     ADD 1 TO WS-ENTRY-COUNT
+                  END-IF
+               END-PERFORM.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

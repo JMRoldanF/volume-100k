@@ -86,20 +86,16 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
+                05 WS-T-BEDROOMS       PIC X(12).
                 05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
-                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
                 05 WS-T-ROOF-TYPE      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZUW01UOK              PIC X(8) VALUE 'ZUW01UOK'.
-       01  MOD-ZMT01KQT              PIC X(8) VALUE 'ZMT01KQT'.
-       01  MOD-ZMT010LJ              PIC X(8) VALUE 'ZMT010LJ'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-7              PIC X(8) VALUE SPACES.
-       01  WS-SUBNAME-8              PIC X(8) VALUE SPACES.
+       01  MOD-ZEX01Q89              PIC X(8) VALUE 'ZEX01Q89'.
+       01  MOD-ZMT01H9F              PIC X(8) VALUE 'ZMT01H9F'.
+       01  MOD-ZMT01QVL              PIC X(8) VALUE 'ZMT01QVL'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -114,11 +110,9 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZUW01UOK-001.
-               PERFORM CALL-ZMT01RQ7-002.
-               PERFORM CALL-ZMT01PKZ-003.
-               PERFORM CALL-ZMT01KQT-004.
-               PERFORM CALL-ZMT010LJ-005.
+               PERFORM CALL-ZEX01Q89-001.
+               PERFORM CALL-ZMT01H9F-002.
+               PERFORM CALL-ZMT01QVL-003.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -131,45 +125,27 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZUW01UOK-001.
-               CALL 'ZUW01UOK' USING DFHCOMMAREA
+       CALL-ZEX01Q89-001.
+               CALL 'ZEX01Q89' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01UOK FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEX01Q89 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01RQ7-002.
-               MOVE 'ZMT01RQ7' TO WS-SUBNAME-7
-               CALL WS-SUBNAME-7 USING DFHCOMMAREA
+       CALL-ZMT01H9F-002.
+               CALL 'ZMT01H9F' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01RQ7 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01H9F FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01PKZ-003.
-               MOVE 'ZMT01PKZ' TO WS-SUBNAME-8
-               CALL WS-SUBNAME-8 USING DFHCOMMAREA
+       CALL-ZMT01QVL-003.
+               CALL 'ZMT01QVL' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01PKZ FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZMT01KQT-004.
-               CALL 'ZMT01KQT' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01KQT FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZMT010LJ-005.
-               CALL 'ZMT010LJ' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT010LJ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01QVL FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

@@ -86,19 +86,20 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-HOUSE-TYPE     PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZRE01QXH              PIC X(8) VALUE 'ZRE01QXH'.
-       01  MOD-ZRE01QEL              PIC X(8) VALUE 'ZRE01QEL'.
-       01  MOD-ZRE01TMP              PIC X(8) VALUE 'ZRE01TMP'.
-       01  MOD-ZRE01SLR              PIC X(8) VALUE 'ZRE01SLR'.
-       01  MOD-ZRE01MBD              PIC X(8) VALUE 'ZRE01MBD'.
-       01  MOD-ZRE01RY5              PIC X(8) VALUE 'ZRE01RY5'.
+       01  MOD-ZRE01DOO              PIC X(8) VALUE 'ZRE01DOO'.
+       01  MOD-ZRE01Q68              PIC X(8) VALUE 'ZRE01Q68'.
+       01  MOD-ZRE01FPK              PIC X(8) VALUE 'ZRE01FPK'.
+       01  MOD-ZRE01SBZ              PIC X(8) VALUE 'ZRE01SBZ'.
+       01  MOD-ZRE01R67              PIC X(8) VALUE 'ZRE01R67'.
+       01  MOD-ZRE01F42              PIC X(8) VALUE 'ZRE01F42'.
+       01  MOD-ZRE00M79              PIC X(8) VALUE 'ZRE00M79'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -113,14 +114,12 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZRE01QXH-001.
-               PERFORM CALL-ZRE01QEL-002.
-               PERFORM CALL-ZRE01TMP-003.
-               PERFORM CALL-ZRE01SLR-004.
-               PERFORM CALL-ZRE01RY5-006.
-               PERFORM EXPAND-ROOF-TYPE-0001.
-               PERFORM EXPAND-NCD-YEARS-0002.
-               PERFORM DERIVE-MANAGED-FUND-0003.
+               PERFORM CALL-ZRE01DOO-001.
+               PERFORM CALL-ZRE01Q68-002.
+               PERFORM CALL-ZRE01FPK-003.
+               PERFORM CALL-ZRE01SBZ-004.
+               PERFORM CALL-ZRE01R67-005.
+               PERFORM CALL-ZRE01F42-006.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -133,82 +132,61 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZRE01QXH-001.
-               CALL 'ZRE01QXH' USING DFHCOMMAREA
+       CALL-ZRE01DOO-001.
+               CALL 'ZRE01DOO' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01QXH FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01DOO FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01QEL-002.
-               CALL 'ZRE01QEL' USING DFHCOMMAREA
+       CALL-ZRE01Q68-002.
+               CALL 'ZRE01Q68' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01QEL FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01Q68 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01TMP-003.
-               CALL 'ZRE01TMP' USING DFHCOMMAREA
+       CALL-ZRE01FPK-003.
+               CALL 'ZRE01FPK' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01TMP FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01FPK FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01SLR-004.
-               CALL 'ZRE01SLR' USING DFHCOMMAREA
+       CALL-ZRE01SBZ-004.
+               CALL 'ZRE01SBZ' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01SLR FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01SBZ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01MBD-005.
-               CALL 'ZRE01MBD' USING DFHCOMMAREA
+       CALL-ZRE01R67-005.
+               CALL 'ZRE01R67' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01MBD FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01R67 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01RY5-006.
-               CALL 'ZRE01RY5' USING DFHCOMMAREA
+       CALL-ZRE01F42-006.
+               CALL 'ZRE01F42' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01RY5 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01F42 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-ROOF-TYPE-0001.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 11
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
+       CALL-ZRE00M79-007.
+               CALL 'ZRE00M79' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZRE00M79 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       EXPAND-NCD-YEARS-0002.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       DERIVE-MANAGED-FUND-0003.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

@@ -86,20 +86,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
-                05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
+                05 WS-T-HOUSE-TYPE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN01IX1              PIC X(8) VALUE 'ZEN01IX1'.
-       01  MOD-ZAG01U2A              PIC X(8) VALUE 'ZAG01U2A'.
-       01  MOD-ZAG01RKK              PIC X(8) VALUE 'ZAG01RKK'.
-       01  MOD-ZPA01M47              PIC X(8) VALUE 'ZPA01M47'.
-       01  MOD-ZAG01RB4              PIC X(8) VALUE 'ZAG01RB4'.
-       01  MOD-ZAG01JPS              PIC X(8) VALUE 'ZAG01JPS'.
-       01  MOD-ZAG012DM              PIC X(8) VALUE 'ZAG012DM'.
+       01  MOD-ZIF01SII              PIC X(8) VALUE 'ZIF01SII'.
+       01  MOD-ZAG01URM              PIC X(8) VALUE 'ZAG01URM'.
+       01  MOD-ZAC01OK9              PIC X(8) VALUE 'ZAC01OK9'.
+       01  MOD-ZAG01TQ9              PIC X(8) VALUE 'ZAG01TQ9'.
+       01  MOD-ZAG01183              PIC X(8) VALUE 'ZAG01183'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -114,12 +112,11 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZEN01IX1-001.
-               PERFORM CALL-ZAG01U2A-002.
-               PERFORM CALL-ZAG01RKK-003.
-               PERFORM CALL-ZPA01M47-004.
-               PERFORM CALL-ZAG01JPS-006.
-               PERFORM CALL-ZAG012DM-007.
+               PERFORM CALL-ZIF01SII-001.
+               PERFORM CALL-ZAG01URM-002.
+               PERFORM CALL-ZAC01OK9-003.
+               PERFORM CALL-ZAG01TQ9-004.
+               PERFORM CALL-ZAG01183-005.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -132,59 +129,43 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZEN01IX1-001.
-               CALL 'ZEN01IX1' USING DFHCOMMAREA
+       CALL-ZIF01SII-001.
+               CALL 'ZIF01SII' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01IX1 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZIF01SII FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01U2A-002.
-               CALL 'ZAG01U2A' USING DFHCOMMAREA
+       CALL-ZAG01URM-002.
+               CALL 'ZAG01URM' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01U2A FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01URM FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01RKK-003.
-               CALL 'ZAG01RKK' USING DFHCOMMAREA
+       CALL-ZAC01OK9-003.
+               CALL 'ZAC01OK9' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01RKK FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAC01OK9 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01M47-004.
-               CALL 'ZPA01M47' USING DFHCOMMAREA
+       CALL-ZAG01TQ9-004.
+               CALL 'ZAG01TQ9' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01M47 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01TQ9 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01RB4-005.
-               CALL 'ZAG01RB4' USING DFHCOMMAREA
+       CALL-ZAG01183-005.
+               CALL 'ZAG01183' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01RB4 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZAG01JPS-006.
-               CALL 'ZAG01JPS' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01JPS FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZAG012DM-007.
-               CALL 'ZAG012DM' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG012DM FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZAG01183 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

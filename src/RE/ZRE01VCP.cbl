@@ -86,19 +86,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-BROKER-ID      PIC X(12).
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
-                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-NCD-YEARS      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZRE01J2P              PIC X(8) VALUE 'ZRE01J2P'.
-       01  MOD-ZRE01I2B              PIC X(8) VALUE 'ZRE01I2B'.
-       01  MOD-ZRE01PRT              PIC X(8) VALUE 'ZRE01PRT'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-7              PIC X(8) VALUE SPACES.
+       01  MOD-ZRE01J2C              PIC X(8) VALUE 'ZRE01J2C'.
+       01  MOD-ZSU01FUW              PIC X(8) VALUE 'ZSU01FUW'.
+       01  MOD-ZRE01IQI              PIC X(8) VALUE 'ZRE01IQI'.
+       01  MOD-ZRE01UM4              PIC X(8) VALUE 'ZRE01UM4'.
+       01  MOD-ZRE01KZZ              PIC X(8) VALUE 'ZRE01KZZ'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -113,17 +112,12 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZRE01J2P-001.
-               PERFORM CALL-ZRE01I2B-002.
-               PERFORM CALL-ZRE01PRT-003.
-               PERFORM CALL-ZRE00QXD-004.
-               PERFORM EXPAND-ROOF-TYPE-0001.
-               PERFORM COMPUTE-EQUITIES-0002.
-               PERFORM REFRESH-MODEL-0003.
-               PERFORM REFRESH-NCD-YEARS-0004.
-               PERFORM EXPAND-AGENT-CODE-0005.
-               PERFORM NORMALISE-BROKER-ID-0006.
-               PERFORM AUDIT-PREMIUM-0008.
+               PERFORM CALL-ZRE01J2C-001.
+               PERFORM CALL-ZSU01FUW-002.
+               PERFORM CALL-ZRE01IQI-003.
+               PERFORM CALL-ZRE01UM4-004.
+               PERFORM CALL-ZRE01KZZ-005.
+               PERFORM COMPUTE-COLOUR-0001.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -136,104 +130,53 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZRE01J2P-001.
-               CALL 'ZRE01J2P' USING DFHCOMMAREA
+       CALL-ZRE01J2C-001.
+               CALL 'ZRE01J2C' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01J2P FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01J2C FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01I2B-002.
-               CALL 'ZRE01I2B' USING DFHCOMMAREA
+       CALL-ZSU01FUW-002.
+               CALL 'ZSU01FUW' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01I2B FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZSU01FUW FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE01PRT-003.
-               CALL 'ZRE01PRT' USING DFHCOMMAREA
+       CALL-ZRE01IQI-003.
+               CALL 'ZRE01IQI' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE01PRT FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01IQI FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE00QXD-004.
-               MOVE 'ZRE00QXD' TO WS-SUBNAME-7
-               CALL WS-SUBNAME-7 USING DFHCOMMAREA
+       CALL-ZRE01UM4-004.
+               CALL 'ZRE01UM4' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE00QXD FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE01UM4 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       EXPAND-ROOF-TYPE-0001.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
+       CALL-ZRE01KZZ-005.
+               CALL 'ZRE01KZZ' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZRE01KZZ FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
-       COMPUTE-EQUITIES-0002.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
-      *----------------------------------------------------------------*
-       REFRESH-MODEL-0003.
-               MOVE 'MODEL' TO WS-T-AMOUNT(1)
+       COMPUTE-COLOUR-0001.
+               MOVE 'COLOUR' TO WS-T-AMOUNT(1)
                SEARCH ALL WS-TABLE-ENTRY
                   AT END MOVE '01' TO WS-STATUS-CODE
                   WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
                        CONTINUE
                END-SEARCH.
-      *----------------------------------------------------------------*
-       REFRESH-NCD-YEARS-0004.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       EXPAND-AGENT-CODE-0005.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       NORMALISE-BROKER-ID-0006.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       RESOLVE-AGENT-CODE-0007.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       AUDIT-PREMIUM-0008.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

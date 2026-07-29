@@ -1,0 +1,17 @@
+      ******************************************************************
+      * COPYBOOK ZKTR0005 (record)                                     *
+      ******************************************************************
+               03 ZKTR0005-REC.
+                  05 TRAV-SUM-ASSURED      PIC X(20).
+                  05 TRAV-CC-RATING        PIC S9(4) COMP.
+                  05 TRAV-ROOF-TYPE        PIC 9(8).
+                  05 TRAV-TAX-BAND         PIC S9(4) COMP.
+                  05 TRAV-BEDROOMS         PIC S9(4) COMP.
+                  05 TRAV-BROKER-ID        PIC X(20).
+                  05 TRAV-REG-NUMBER       PIC 9(8).
+                  05 TRAV-COLOUR           PIC X(10).
+                  05 TRAV-PREMIUM          PIC X(10).
+                  05 TRAV-TERM             PIC X(10).
+                  05 TRAV-TABLE OCCURS 12 TIMES.
+                     07 TAB-MONTH             PIC 9(2).
+                     07 TAB-AMOUNT            PIC S9(7)V99 COMP-3.

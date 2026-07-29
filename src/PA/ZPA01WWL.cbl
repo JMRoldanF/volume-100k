@@ -86,16 +86,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-WITH-PROFITS   PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
-                05 WS-T-HOUSE-TYPE     PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZPA01G9N              PIC X(8) VALUE 'ZPA01G9N'.
-       01  MOD-ZAG01UOS              PIC X(8) VALUE 'ZAG01UOS'.
-       01  MOD-ZPA01189              PIC X(8) VALUE 'ZPA01189'.
+       01  MOD-ZPA01L85              PIC X(8) VALUE 'ZPA01L85'.
+       01  MOD-ZPA01N5H              PIC X(8) VALUE 'ZPA01N5H'.
+       01  MOD-ZPA01UA0              PIC X(8) VALUE 'ZPA01UA0'.
+       01  MOD-ZPA01JYS              PIC X(8) VALUE 'ZPA01JYS'.
+       01  MOD-ZPA01PA3              PIC X(8) VALUE 'ZPA01PA3'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -110,9 +112,11 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZPA01G9N-001.
-               PERFORM CALL-ZAG01UOS-002.
-               PERFORM CALL-ZPA01189-003.
+               PERFORM CALL-ZPA01L85-001.
+               PERFORM CALL-ZPA01N5H-002.
+               PERFORM CALL-ZPA01UA0-003.
+               PERFORM CALL-ZPA01JYS-004.
+               PERFORM CALL-ZPA01PA3-005.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -125,27 +129,43 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZPA01G9N-001.
-               CALL 'ZPA01G9N' USING DFHCOMMAREA
+       CALL-ZPA01L85-001.
+               CALL 'ZPA01L85' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01G9N FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01L85 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZAG01UOS-002.
-               CALL 'ZAG01UOS' USING DFHCOMMAREA
+       CALL-ZPA01N5H-002.
+               CALL 'ZPA01N5H' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZAG01UOS FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01N5H FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01189-003.
-               CALL 'ZPA01189' USING DFHCOMMAREA
+       CALL-ZPA01UA0-003.
+               CALL 'ZPA01UA0' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01189 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01UA0 FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZPA01JYS-004.
+               CALL 'ZPA01JYS' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZPA01JYS FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZPA01PA3-005.
+               CALL 'ZPA01PA3' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZPA01PA3 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

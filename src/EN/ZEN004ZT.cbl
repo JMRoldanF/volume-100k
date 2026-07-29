@@ -56,21 +56,21 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
+                05 WS-T-NCD-YEARS      PIC X(12).
                 05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-EXCESS         PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN00GE3              PIC X(8) VALUE 'ZEN00GE3'.
-       01  MOD-ZEN00APD              PIC X(8) VALUE 'ZEN00APD'.
-
-      * Dynamically resolved module names
-       01  WS-PROGNAME-7             PIC X(8) VALUE SPACES.
+       01  MOD-ZEN00D1A              PIC X(8) VALUE 'ZEN00D1A'.
+       01  MOD-ZLB00GR8              PIC X(8) VALUE 'ZLB00GR8'.
+       01  MOD-ZEN00L4X              PIC X(8) VALUE 'ZEN00L4X'.
+       01  MOD-ZEN00CAS              PIC X(8) VALUE 'ZEN00CAS'.
+       01  MOD-ZEN00GUG              PIC X(8) VALUE 'ZEN00GUG'.
 
       * BMS mapset copy
-           COPY ZENMAP02.
+           COPY ZENMAP35.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -78,9 +78,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKEN0013.
-               COPY ZKEN0059.
-               COPY ZKEN0029.
+               COPY ZKEN0004.
+               COPY ZKEN0050.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -94,145 +93,154 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGRC')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZEN00GE3-001.
-               PERFORM CALL-ZEN00APD-003.
-               PERFORM COMPUTE-VALUE-0001.
-               PERFORM COMPUTE-REG-NUMBER-0002.
-               PERFORM FORMAT-PREMIUM-0003.
-               PERFORM DERIVE-HOUSE-TYPE-0004.
-               PERFORM APPLY-STATUS-CODE-0005.
-               PERFORM AUDIT-WITH-PROFITS-0006.
+               PERFORM CALL-ZEN00D1A-001.
+               PERFORM CALL-ZLB00GR8-002.
+               PERFORM CALL-ZEN00L4X-003.
+               PERFORM CALL-ZEN00CAS-004.
+               PERFORM CALL-ZEN00GUG-005.
+               PERFORM DERIVE-WITH-PROFITS-0001.
+               PERFORM AUDIT-NCD-YEARS-0002.
+               PERFORM VALIDATE-BROKER-ID-0004.
+               PERFORM COMPUTE-HOUSE-TYPE-0005.
+               PERFORM VALIDATE-SUM-ASSURED-0006.
                PERFORM SEND-RECEIVE-MAP-0007.
-               PERFORM RESOLVE-EQUITIES-0008.
-               PERFORM EXPAND-COLOUR-0009.
-               PERFORM CHECK-MODEL-0010.
-               PERFORM RESOLVE-HOUSE-TYPE-0011.
+               PERFORM NORMALISE-BROKER-ID-0008.
+               PERFORM APPLY-BEDROOMS-0009.
+               PERFORM RECONCILE-CC-RATING-0010.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZEN00GE3-001.
-               EXEC CICS LINK PROGRAM('ZEN00GE3')
+       CALL-ZEN00D1A-001.
+               EXEC CICS LINK PROGRAM('ZEN00D1A')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00GE3 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00D1A FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN00GEX-002.
-               MOVE 'ZEN00GEX' TO WS-PROGNAME-7
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-7)
+       CALL-ZLB00GR8-002.
+               EXEC CICS LINK PROGRAM('ZLB00GR8')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00GEX FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZLB00GR8 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN00APD-003.
-               EXEC CICS LINK PROGRAM('ZEN00APD')
+       CALL-ZEN00L4X-003.
+               EXEC CICS LINK PROGRAM('ZEN00L4X')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00APD FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00L4X FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       COMPUTE-VALUE-0001.
+       CALL-ZEN00CAS-004.
+               EXEC CICS LINK PROGRAM('ZEN00CAS')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZEN00CAS FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZEN00GUG-005.
+               EXEC CICS LINK PROGRAM('ZEN00GUG')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZEN00GUG FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       DERIVE-WITH-PROFITS-0001.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       AUDIT-NCD-YEARS-0002.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       APPLY-COLOUR-0003.
                IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO VALUE' TO EM-VARIABLE
+                  MOVE ' NO COLOUR' TO EM-VARIABLE
                   MOVE '01' TO WS-STATUS-CODE
                ELSE
                   MOVE '00' TO WS-STATUS-CODE
                END-IF.
       *----------------------------------------------------------------*
-       COMPUTE-REG-NUMBER-0002.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       FORMAT-PREMIUM-0003.
-               MOVE 'PREMIUM' TO WS-T-AMOUNT(1)
+       VALIDATE-BROKER-ID-0004.
+               MOVE 'BROKER-ID' TO WS-T-AMOUNT(1)
                SEARCH ALL WS-TABLE-ENTRY
                   AT END MOVE '01' TO WS-STATUS-CODE
                   WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
                        CONTINUE
                END-SEARCH.
       *----------------------------------------------------------------*
-       DERIVE-HOUSE-TYPE-0004.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
+       COMPUTE-HOUSE-TYPE-0005.
+               MOVE 'HOUSE-TYPE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
-       APPLY-STATUS-CODE-0005.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO STATUS-CODE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-WITH-PROFITS-0006.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       VALIDATE-SUM-ASSURED-0006.
+               MOVE 'SUM-ASSURE' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
        SEND-RECEIVE-MAP-0007.
-               EXEC CICS SEND MAP('ZENMAP0I')
-                         MAPSET('ZENMAP02')
+               EXEC CICS SEND MAP('ZENMAP3I')
+                         MAPSET('ZENMAP35')
                          ERASE
                          RESP(WS-RESP)
                END-EXEC.
-               EXEC CICS RECEIVE MAP('ZENMAP0I')
-                         MAPSET('ZENMAP02')
+               EXEC CICS RECEIVE MAP('ZENMAP3I')
+                         MAPSET('ZENMAP35')
                          RESP(WS-RESP)
                END-EXEC.
       *----------------------------------------------------------------*
-       RESOLVE-EQUITIES-0008.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 11
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
+       NORMALISE-BROKER-ID-0008.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
-       EXPAND-COLOUR-0009.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
+       APPLY-BEDROOMS-0009.
+               MOVE 'BEDROOMS' TO WS-T-AMOUNT(1)
+               SEARCH ALL WS-TABLE-ENTRY
+                  AT END MOVE '01' TO WS-STATUS-CODE
+                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
+                       CONTINUE
+               END-SEARCH.
       *----------------------------------------------------------------*
-       CHECK-MODEL-0010.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RESOLVE-HOUSE-TYPE-0011.
+       RECONCILE-CC-RATING-0010.
                EVALUATE TRUE
                   WHEN WS-PREMIUM-TOTAL < 999
                        MOVE 1 TO WS-PREMIUM-BAND

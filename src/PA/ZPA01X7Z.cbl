@@ -86,21 +86,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-ROOF-TYPE      PIC X(12).
-                05 WS-T-AGENT-CODE     PIC X(12).
-                05 WS-T-VALUE          PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZPA01QVV              PIC X(8) VALUE 'ZPA01QVV'.
-       01  MOD-ZCU01J90              PIC X(8) VALUE 'ZCU01J90'.
-       01  MOD-ZBI01FMI              PIC X(8) VALUE 'ZBI01FMI'.
-       01  MOD-ZPA01SDR              PIC X(8) VALUE 'ZPA01SDR'.
-       01  MOD-ZPA01ODL              PIC X(8) VALUE 'ZPA01ODL'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-8              PIC X(8) VALUE SPACES.
+       01  MOD-ZPA01FO2              PIC X(8) VALUE 'ZPA01FO2'.
+       01  MOD-ZCR01GOW              PIC X(8) VALUE 'ZCR01GOW'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -115,12 +109,10 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZPA01MND-001.
-               PERFORM CALL-ZPA01QVV-002.
-               PERFORM CALL-ZCU01J90-003.
-               PERFORM CALL-ZBI01FMI-004.
-               PERFORM CALL-ZPA01SDR-005.
-               PERFORM CALL-ZPA01ODL-006.
+               PERFORM CALL-ZPA01FO2-001.
+               PERFORM CALL-ZCR01GOW-002.
+               PERFORM RECONCILE-EQUITIES-0001.
+               PERFORM REFRESH-BEDROOMS-0002.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -133,52 +125,31 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZPA01MND-001.
-               MOVE 'ZPA01MND' TO WS-SUBNAME-8
-               CALL WS-SUBNAME-8 USING DFHCOMMAREA
+       CALL-ZPA01FO2-001.
+               CALL 'ZPA01FO2' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01MND FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZPA01FO2 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01QVV-002.
-               CALL 'ZPA01QVV' USING DFHCOMMAREA
+       CALL-ZCR01GOW-002.
+               CALL 'ZCR01GOW' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01QVV FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCR01GOW FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU01J90-003.
-               CALL 'ZCU01J90' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01J90 FAILED' TO EM-VARIABLE
+       RECONCILE-EQUITIES-0001.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZBI01FMI-004.
-               CALL 'ZBI01FMI' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZBI01FMI FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZPA01SDR-005.
-               CALL 'ZPA01SDR' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01SDR FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZPA01ODL-006.
-               CALL 'ZPA01ODL' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01ODL FAILED' TO EM-VARIABLE
+       REFRESH-BEDROOMS-0002.
+               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
+               IF WS-STATUS-FAILED
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

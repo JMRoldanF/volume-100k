@@ -86,18 +86,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AGENT-CODE     PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
+                05 WS-T-TERM           PIC X(12).
                 05 WS-T-COLOUR         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO01KGA              PIC X(8) VALUE 'ZHO01KGA'.
-       01  MOD-ZHO01UDS              PIC X(8) VALUE 'ZHO01UDS'.
-       01  MOD-ZHO01P0Q              PIC X(8) VALUE 'ZHO01P0Q'.
-       01  MOD-ZHO01QFK              PIC X(8) VALUE 'ZHO01QFK'.
-       01  MOD-ZHO01HP4              PIC X(8) VALUE 'ZHO01HP4'.
+       01  MOD-ZHO01RMA              PIC X(8) VALUE 'ZHO01RMA'.
+       01  MOD-ZFL01UJ6              PIC X(8) VALUE 'ZFL01UJ6'.
+       01  MOD-ZHO01CYR              PIC X(8) VALUE 'ZHO01CYR'.
+       01  MOD-ZHO01HDH              PIC X(8) VALUE 'ZHO01HDH'.
+       01  MOD-ZHO00RA4              PIC X(8) VALUE 'ZHO00RA4'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -112,20 +112,11 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZHO01KGA-001.
-               PERFORM CALL-ZHO01UDS-002.
-               PERFORM CALL-ZHO01P0Q-003.
-               PERFORM CALL-ZHO01QFK-004.
-               PERFORM CALL-ZHO01HP4-005.
-               PERFORM DERIVE-TAX-BAND-0001.
-               PERFORM RECONCILE-VALUE-0002.
-               PERFORM EXPAND-WITH-PROFITS-0003.
-               PERFORM APPLY-POSTCODE-0004.
-               PERFORM EXPAND-REG-NUMBER-0005.
-               PERFORM AUDIT-EQUITIES-0006.
-               PERFORM NORMALISE-VALUE-0007.
-               PERFORM VALIDATE-MANAGED-FUND-0008.
-               PERFORM AUDIT-NCD-YEARS-0010.
+               PERFORM CALL-ZHO01RMA-001.
+               PERFORM CALL-ZFL01UJ6-002.
+               PERFORM CALL-ZHO01CYR-003.
+               PERFORM CALL-ZHO01HDH-004.
+               PERFORM CALL-ZHO00RA4-005.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -138,123 +129,45 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZHO01KGA-001.
-               CALL 'ZHO01KGA' USING DFHCOMMAREA
+       CALL-ZHO01RMA-001.
+               CALL 'ZHO01RMA' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01KGA FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01RMA FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01UDS-002.
-               CALL 'ZHO01UDS' USING DFHCOMMAREA
+       CALL-ZFL01UJ6-002.
+               CALL 'ZFL01UJ6' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01UDS FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZFL01UJ6 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01P0Q-003.
-               CALL 'ZHO01P0Q' USING DFHCOMMAREA
+       CALL-ZHO01CYR-003.
+               CALL 'ZHO01CYR' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01P0Q FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01CYR FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01QFK-004.
-               CALL 'ZHO01QFK' USING DFHCOMMAREA
+       CALL-ZHO01HDH-004.
+               CALL 'ZHO01HDH' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01QFK FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01HDH FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01HP4-005.
-               CALL 'ZHO01HP4' USING DFHCOMMAREA
+       CALL-ZHO00RA4-005.
+               CALL 'ZHO00RA4' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01HP4 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO00RA4 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
-      *----------------------------------------------------------------*
-       DERIVE-TAX-BAND-0001.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       RECONCILE-VALUE-0002.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       EXPAND-WITH-PROFITS-0003.
-               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
-                           WS-PREMIUM-TOTAL * 1.075
-                         + WS-T-AMOUNT(WS-SUB) / 6
-                         - WS-PREMIUM-BAND.
-               IF WS-PREMIUM-TOTAL < ZERO
-                  MOVE ZERO TO WS-PREMIUM-TOTAL
-               END-IF.
-      *----------------------------------------------------------------*
-       APPLY-POSTCODE-0004.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       EXPAND-REG-NUMBER-0005.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-EQUITIES-0006.
-               MOVE 'EQUITIES' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
-      *----------------------------------------------------------------*
-       NORMALISE-VALUE-0007.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       VALIDATE-MANAGED-FUND-0008.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       RECONCILE-POSTCODE-0009.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO POSTCODE' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-NCD-YEARS-0010.
-               MOVE 'NCD-YEARS' TO WS-T-AMOUNT(1)
-               SEARCH ALL WS-TABLE-ENTRY
-                  AT END MOVE '01' TO WS-STATUS-CODE
-                  WHEN WS-T-AMOUNT(WS-IX) = WS-PREMIUM-TOTAL
-                       CONTINUE
-               END-SEARCH.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

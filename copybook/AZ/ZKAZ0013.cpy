@@ -1,0 +1,18 @@
+      ******************************************************************
+      * COPYBOOK ZKAZ0013 (record)                                     *
+      ******************************************************************
+               COPY ZKCONST0.
+               03 ZKAZ0013-REC.
+                  05 AUTH-HOUSE-TYPE       PIC X(10).
+                  05 AUTH-REG-NUMBER       PIC X(20).
+                  05 AUTH-POSTCODE         PIC 9(8).
+                  05 AUTH-ROOF-TYPE        PIC S9(4) COMP.
+                  05 AUTH-BEDROOMS         PIC X(20).
+                  05 AUTH-NCD-YEARS        PIC S9(4) COMP.
+                  05 AUTH-EQUITIES         PIC X(20).
+                  05 AUTH-EXCESS           PIC 9(8).
+                  05 AUTH-MODEL            PIC 9(8).
+                  05 AUTH-VALUE            PIC 9(8).
+                  05 AUTH-TABLE OCCURS 12 TIMES.
+                     07 TAB-MONTH             PIC 9(2).
+                     07 TAB-AMOUNT            PIC S9(7)V99 COMP-3.

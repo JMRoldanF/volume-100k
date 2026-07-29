@@ -56,21 +56,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-WITH-PROFITS   PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
                 05 WS-T-EQUITIES       PIC X(12).
-                05 WS-T-TERM           PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZRE00BX3              PIC X(8) VALUE 'ZRE00BX3'.
-       01  MOD-ZRE00I6X              PIC X(8) VALUE 'ZRE00I6X'.
-       01  MOD-ZRE00H87              PIC X(8) VALUE 'ZRE00H87'.
-       01  MOD-ZRE009M1              PIC X(8) VALUE 'ZRE009M1'.
-       01  MOD-ZCU0255O              PIC X(8) VALUE 'ZCU0255O'.
-
-      * Dynamically resolved module names
-       01  WS-PROGNAME-8             PIC X(8) VALUE SPACES.
+       01  MOD-ZRE00IIR              PIC X(8) VALUE 'ZRE00IIR'.
+       01  MOD-ZRE00L5S              PIC X(8) VALUE 'ZRE00L5S'.
+       01  MOD-ZSU00J8W              PIC X(8) VALUE 'ZSU00J8W'.
+       01  MOD-ZRE00AUL              PIC X(8) VALUE 'ZRE00AUL'.
 
       * BMS mapset copy
            COPY ZREMAP08.
@@ -81,9 +77,8 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKRE0019.
-               COPY ZKRE0049.
-               COPY ZKRE0054.
+               COPY ZKRE0046.
+               COPY ZKRE0017.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -97,166 +92,95 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGCA')
+                  EXEC CICS ABEND ABCODE('LGDL')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZRE00BX3-001.
-               PERFORM CALL-ZRE00I6X-002.
-               PERFORM CALL-ZRE00H87-003.
-               PERFORM CALL-ZRE00BC9-004.
-               PERFORM CALL-ZRE009M1-005.
-               PERFORM CALL-ZCU0255O-006.
-               PERFORM APPLY-COLOUR-0001.
-               PERFORM NORMALISE-SUM-ASSURED-0003.
-               PERFORM REFRESH-STATUS-CODE-0004.
-               PERFORM CHECK-WITH-PROFITS-0005.
-               PERFORM CHECK-EQUITIES-0006.
-               PERFORM SEND-RECEIVE-MAP-0007.
-               PERFORM AUDIT-MODEL-0008.
-               PERFORM REFRESH-PREMIUM-0009.
+               PERFORM CALL-ZRE00IIR-001.
+               PERFORM CALL-ZRE00L5S-002.
+               PERFORM CALL-ZSU00J8W-003.
+               PERFORM CALL-ZRE00AUL-004.
+               PERFORM CALL-ZRE002FZ-005.
+               PERFORM FORMAT-HOUSE-TYPE-0001.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZRE00BX3-001.
-               EXEC CICS LINK PROGRAM('ZRE00BX3')
+       CALL-ZRE00IIR-001.
+               EXEC CICS LINK PROGRAM('ZRE00IIR')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE00BX3 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE00IIR FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE00I6X-002.
-               EXEC CICS LINK PROGRAM('ZRE00I6X')
+       CALL-ZRE00L5S-002.
+               EXEC CICS LINK PROGRAM('ZRE00L5S')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE00I6X FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE00L5S FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE00H87-003.
-               EXEC CICS LINK PROGRAM('ZRE00H87')
+       CALL-ZSU00J8W-003.
+               EXEC CICS LINK PROGRAM('ZSU00J8W')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE00H87 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZSU00J8W FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE00BC9-004.
-               MOVE 'ZRE00BC9' TO WS-PROGNAME-8
-               EXEC CICS LINK PROGRAM(WS-PROGNAME-8)
+       CALL-ZRE00AUL-004.
+               EXEC CICS LINK PROGRAM('ZRE00AUL')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE00BC9 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE00AUL FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZRE009M1-005.
-               EXEC CICS LINK PROGRAM('ZRE009M1')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
+       CALL-ZRE002FZ-005.
+               EXEC CICS START TRANSID('Z2FZ')
+                         FROM(WS-KEY-AREA)
+                         LENGTH(20)
                          RESP(WS-RESP)
                END-EXEC.
+      * TRANSID Z2FZ is defined against ZRE002FZ
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZRE009M1 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZRE002FZ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU0255O-006.
-               EXEC CICS LINK PROGRAM('ZCU0255O')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU0255O FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
+       FORMAT-HOUSE-TYPE-0001.
+               EVALUATE TRUE
+                  WHEN WS-PREMIUM-TOTAL < 999
+                       MOVE 1 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 4999
+                       MOVE 2 TO WS-PREMIUM-BAND
+                  WHEN WS-PREMIUM-TOTAL < 24999
+                       MOVE 3 TO WS-PREMIUM-BAND
+                  WHEN OTHER
+                       MOVE 9 TO WS-PREMIUM-BAND
+               END-EVALUATE.
+      *----------------------------------------------------------------*
+       APPLY-TAX-BAND-0002.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 6
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
-      *----------------------------------------------------------------*
-       APPLY-COLOUR-0001.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO COLOUR' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       DERIVE-COLOUR-0002.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
-      *----------------------------------------------------------------*
-       NORMALISE-SUM-ASSURED-0003.
-               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
-               END-EXEC.
-               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
-                         MMDDYYYY(DATE1)
-                         TIME(TIME1)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       REFRESH-STATUS-CODE-0004.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CHECK-WITH-PROFITS-0005.
-               UNSTRING WS-KEY-CHAR DELIMITED BY '/'
-                             INTO WS-KEY-CUSTOMER
-                                  WS-KEY-POLICY
-               END-UNSTRING.
-      *----------------------------------------------------------------*
-       CHECK-EQUITIES-0006.
-               IF WS-KEY-CUSTOMER = ZERO
-                  MOVE ' NO EQUITIES' TO EM-VARIABLE
-                  MOVE '01' TO WS-STATUS-CODE
-               ELSE
-                  MOVE '00' TO WS-STATUS-CODE
-               END-IF.
-      *----------------------------------------------------------------*
-       SEND-RECEIVE-MAP-0007.
-               EXEC CICS SEND MAP('ZREMAP0I')
-                         MAPSET('ZREMAP08')
-                         ERASE
-                         RESP(WS-RESP)
-               END-EXEC.
-               EXEC CICS RECEIVE MAP('ZREMAP0I')
-                         MAPSET('ZREMAP08')
-                         RESP(WS-RESP)
-               END-EXEC.
-      *----------------------------------------------------------------*
-       AUDIT-MODEL-0008.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
-      *----------------------------------------------------------------*
-       REFRESH-PREMIUM-0009.
-               PERFORM VARYING WS-IX FROM 1 BY 1
-                           UNTIL WS-IX > WS-TABLE-COUNT
-                  ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
-                  IF WS-T-AMOUNT(WS-IX) = ZERO
-                     ADD 1 TO WS-ENTRY-COUNT
-                  END-IF
-               END-PERFORM.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

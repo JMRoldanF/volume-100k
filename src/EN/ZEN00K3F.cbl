@@ -56,19 +56,16 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-VALUE          PIC X(12).
                 05 WS-T-MAKE           PIC X(12).
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZEN00XEV              PIC X(8) VALUE 'ZEN00XEV'.
-       01  MOD-ZEN0105H              PIC X(8) VALUE 'ZEN0105H'.
-       01  MOD-ZHO019XO              PIC X(8) VALUE 'ZHO019XO'.
-       01  MOD-ZEN015XT              PIC X(8) VALUE 'ZEN015XT'.
-       01  MOD-ZEN01JK3              PIC X(8) VALUE 'ZEN01JK3'.
-       01  MOD-ZEN01P5R              PIC X(8) VALUE 'ZEN01P5R'.
+       01  MOD-ZEN00S3S              PIC X(8) VALUE 'ZEN00S3S'.
+       01  MOD-ZEN00OTN              PIC X(8) VALUE 'ZEN00OTN'.
+       01  MOD-ZEN01K1L              PIC X(8) VALUE 'ZEN01K1L'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -76,7 +73,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKEN0002.
+               COPY ZKEN0054.
+               COPY ZKEN0059.
+               COPY ZKEN0005.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -95,95 +94,107 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZEN00XEV-001.
-               PERFORM CALL-ZHO019XO-003.
-               PERFORM CALL-ZEN015XT-004.
-               PERFORM CALL-ZEN01JK3-005.
-               PERFORM CALL-ZEN01P5R-006.
-               PERFORM APPLY-MANAGED-FUND-0001.
-               PERFORM AUDIT-TERM-0002.
-               PERFORM FORMAT-BROKER-ID-0003.
+               PERFORM CALL-ZEN00S3S-001.
+               PERFORM CALL-ZEN00OTN-002.
+               PERFORM CALL-ZEN01K1L-003.
+               PERFORM EXPAND-MODEL-0001.
+               PERFORM RESOLVE-REG-NUMBER-0002.
+               PERFORM FORMAT-REG-NUMBER-0003.
+               PERFORM CHECK-BEDROOMS-0004.
+               PERFORM EXPAND-WITH-PROFITS-0006.
+               PERFORM VALIDATE-MANAGED-FUND-0007.
+               PERFORM FORMAT-TAX-BAND-0008.
+               PERFORM RECONCILE-TAX-BAND-0009.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZEN00XEV-001.
-               EXEC CICS LINK PROGRAM('ZEN00XEV')
+       CALL-ZEN00S3S-001.
+               EXEC CICS LINK PROGRAM('ZEN00S3S')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN00XEV FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00S3S FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN0105H-002.
-               EXEC CICS LINK PROGRAM('ZEN0105H')
+       CALL-ZEN00OTN-002.
+               EXEC CICS LINK PROGRAM('ZEN00OTN')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN0105H FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN00OTN FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO019XO-003.
-               EXEC CICS LINK PROGRAM('ZHO019XO')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO019XO FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZEN015XT-004.
-               EXEC CICS LINK PROGRAM('ZEN015XT')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN015XT FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZEN01JK3-005.
-               CALL 'ZEN01JK3' USING DFHCOMMAREA
+       CALL-ZEN01K1L-003.
+               CALL 'ZEN01K1L' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01JK3 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZEN01K1L FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZEN01P5R-006.
-               CALL 'ZEN01P5R' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZEN01P5R FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
+       EXPAND-MODEL-0001.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       RESOLVE-REG-NUMBER-0002.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       FORMAT-REG-NUMBER-0003.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
+      *----------------------------------------------------------------*
+       CHECK-BEDROOMS-0004.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
+      *----------------------------------------------------------------*
+       VALIDATE-MANAGED-FUND-0005.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 10
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
                END-IF.
       *----------------------------------------------------------------*
-       APPLY-MANAGED-FUND-0001.
-               INSPECT WS-KEY-CHAR REPLACING ALL SPACES BY '0'.
-               IF WS-STATUS-FAILED
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
+       EXPAND-WITH-PROFITS-0006.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
       *----------------------------------------------------------------*
-       AUDIT-TERM-0002.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
+       VALIDATE-MANAGED-FUND-0007.
+               MOVE SPACES TO WS-KEY-CHAR.
+               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
+                         '/'              DELIMITED BY SIZE
+                         WS-KEY-POLICY    DELIMITED BY SIZE
+                         INTO WS-KEY-CHAR
+               END-STRING.
       *----------------------------------------------------------------*
-       FORMAT-BROKER-ID-0003.
+       FORMAT-TAX-BAND-0008.
                PERFORM VARYING WS-IX FROM 1 BY 1
                            UNTIL WS-IX > WS-TABLE-COUNT
                   ADD WS-T-AMOUNT(WS-IX) TO WS-PREMIUM-TOTAL
@@ -191,6 +202,15 @@
                      ADD 1 TO WS-ENTRY-COUNT
                   END-IF
                END-PERFORM.
+      *----------------------------------------------------------------*
+       RECONCILE-TAX-BAND-0009.
+               COMPUTE WS-PREMIUM-TOTAL ROUNDED =
+                           WS-PREMIUM-TOTAL * 1.075
+                         + WS-T-AMOUNT(WS-SUB) / 4
+                         - WS-PREMIUM-BAND.
+               IF WS-PREMIUM-TOTAL < ZERO
+                  MOVE ZERO TO WS-PREMIUM-TOTAL
+               END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

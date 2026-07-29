@@ -86,15 +86,20 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-REG-NUMBER     PIC X(12).
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-NCD-YEARS      PIC X(12).
-                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-AGENT-CODE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01FZF              PIC X(8) VALUE 'ZMT01FZF'.
-       01  MOD-ZMT01RYT              PIC X(8) VALUE 'ZMT01RYT'.
+       01  MOD-ZMT01K1K              PIC X(8) VALUE 'ZMT01K1K'.
+       01  MOD-ZMT01LRJ              PIC X(8) VALUE 'ZMT01LRJ'.
+       01  MOD-ZMT01S8C              PIC X(8) VALUE 'ZMT01S8C'.
+       01  MOD-ZMT01M8B              PIC X(8) VALUE 'ZMT01M8B'.
+       01  MOD-ZMT01SJL              PIC X(8) VALUE 'ZMT01SJL'.
+       01  MOD-ZMT01ITE              PIC X(8) VALUE 'ZMT01ITE'.
+       01  MOD-ZMT00YWM              PIC X(8) VALUE 'ZMT00YWM'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -109,9 +114,12 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZMT01FZF-001.
-               PERFORM CALL-ZMT01RYT-002.
-               PERFORM AUDIT-SUM-ASSURED-0001.
+               PERFORM CALL-ZMT01K1K-001.
+               PERFORM CALL-ZMT01LRJ-002.
+               PERFORM CALL-ZMT01S8C-003.
+               PERFORM CALL-ZMT01M8B-004.
+               PERFORM CALL-ZMT01ITE-006.
+               PERFORM CALL-ZMT00YWM-007.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -124,29 +132,61 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZMT01FZF-001.
-               CALL 'ZMT01FZF' USING DFHCOMMAREA
+       CALL-ZMT01K1K-001.
+               CALL 'ZMT01K1K' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01FZF FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01K1K FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01RYT-002.
-               CALL 'ZMT01RYT' USING DFHCOMMAREA
+       CALL-ZMT01LRJ-002.
+               CALL 'ZMT01LRJ' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01RYT FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01LRJ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       AUDIT-SUM-ASSURED-0001.
-               MOVE SPACES TO WS-KEY-CHAR.
-               STRING WS-KEY-CUSTOMER DELIMITED BY SIZE
-                         '/'              DELIMITED BY SIZE
-                         WS-KEY-POLICY    DELIMITED BY SIZE
-                         INTO WS-KEY-CHAR
-               END-STRING.
+       CALL-ZMT01S8C-003.
+               CALL 'ZMT01S8C' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT01S8C FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZMT01M8B-004.
+               CALL 'ZMT01M8B' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT01M8B FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZMT01SJL-005.
+               CALL 'ZMT01SJL' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT01SJL FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZMT01ITE-006.
+               CALL 'ZMT01ITE' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT01ITE FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZMT00YWM-007.
+               CALL 'ZMT00YWM' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZMT00YWM FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.

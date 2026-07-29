@@ -86,21 +86,16 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MANAGED-FUND   PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-ROOF-TYPE      PIC X(12).
                 05 WS-T-BEDROOMS       PIC X(12).
-                05 WS-T-CC-RATING      PIC X(12).
+                05 WS-T-STATUS-CODE    PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZUW01OIW              PIC X(8) VALUE 'ZUW01OIW'.
-       01  MOD-ZUW01L80              PIC X(8) VALUE 'ZUW01L80'.
-       01  MOD-ZUW01J5A              PIC X(8) VALUE 'ZUW01J5A'.
-       01  MOD-ZUW01QNU              PIC X(8) VALUE 'ZUW01QNU'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-1              PIC X(8) VALUE SPACES.
-       01  WS-SUBNAME-2              PIC X(8) VALUE SPACES.
+       01  MOD-ZUW01RA7              PIC X(8) VALUE 'ZUW01RA7'.
+       01  MOD-ZUW01DJS              PIC X(8) VALUE 'ZUW01DJS'.
+       01  MOD-ZUW01QXI              PIC X(8) VALUE 'ZUW01QXI'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -115,12 +110,9 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZUW01US6-001.
-               PERFORM CALL-ZUW01OIW-002.
-               PERFORM CALL-ZUW01L80-003.
-               PERFORM CALL-ZUW01J5A-004.
-               PERFORM CALL-ZUW01KAE-005.
-               PERFORM CALL-ZUW01QNU-006.
+               PERFORM CALL-ZUW01RA7-001.
+               PERFORM CALL-ZUW01DJS-002.
+               PERFORM CALL-ZUW01QXI-003.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -133,53 +125,27 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZUW01US6-001.
-               MOVE 'ZUW01US6' TO WS-SUBNAME-1
-               CALL WS-SUBNAME-1 USING DFHCOMMAREA
+       CALL-ZUW01RA7-001.
+               CALL 'ZUW01RA7' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01US6 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01RA7 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW01OIW-002.
-               CALL 'ZUW01OIW' USING DFHCOMMAREA
+       CALL-ZUW01DJS-002.
+               CALL 'ZUW01DJS' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01OIW FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01DJS FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW01L80-003.
-               CALL 'ZUW01L80' USING DFHCOMMAREA
+       CALL-ZUW01QXI-003.
+               CALL 'ZUW01QXI' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01L80 FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZUW01J5A-004.
-               CALL 'ZUW01J5A' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01J5A FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZUW01KAE-005.
-               MOVE 'ZUW01KAE' TO WS-SUBNAME-2
-               CALL WS-SUBNAME-2 USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01KAE FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       CALL-ZUW01QNU-006.
-               CALL 'ZUW01QNU' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01QNU FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01QXI FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

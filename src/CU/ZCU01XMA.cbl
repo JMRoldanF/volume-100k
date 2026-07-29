@@ -86,18 +86,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-PREMIUM        PIC X(12).
-                05 WS-T-TAX-BAND       PIC X(12).
-                05 WS-T-AGENT-CODE     PIC X(12).
-                05 WS-T-COLOUR         PIC X(12).
+                05 WS-T-EQUITIES       PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-MAKE           PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU01EFO              PIC X(8) VALUE 'ZCU01EFO'.
-       01  MOD-ZCU00W8E              PIC X(8) VALUE 'ZCU00W8E'.
-
-      * Dynamically resolved module names
-       01  WS-SUBNAME-5              PIC X(8) VALUE SPACES.
+       01  MOD-ZCU01EUG              PIC X(8) VALUE 'ZCU01EUG'.
+       01  MOD-ZCU01GA6              PIC X(8) VALUE 'ZCU01GA6'.
+       01  MOD-ZCU01MRV              PIC X(8) VALUE 'ZCU01MRV'.
+       01  MOD-ZCU01ULX              PIC X(8) VALUE 'ZCU01ULX'.
+       01  MOD-ZCU01I1B              PIC X(8) VALUE 'ZCU01I1B'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -112,9 +112,11 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZCU01EFO-001.
-               PERFORM CALL-ZHO01FJC-002.
-               PERFORM CALL-ZCU00W8E-003.
+               PERFORM CALL-ZCU01EUG-001.
+               PERFORM CALL-ZCU01GA6-002.
+               PERFORM CALL-ZCU01MRV-003.
+               PERFORM CALL-ZCU01ULX-004.
+               PERFORM CALL-ZCU01I1B-005.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -127,28 +129,43 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZCU01EFO-001.
-               CALL 'ZCU01EFO' USING DFHCOMMAREA
+       CALL-ZCU01EUG-001.
+               CALL 'ZCU01EUG' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01EFO FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01EUG FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01FJC-002.
-               MOVE 'ZHO01FJC' TO WS-SUBNAME-5
-               CALL WS-SUBNAME-5 USING DFHCOMMAREA
+       CALL-ZCU01GA6-002.
+               CALL 'ZCU01GA6' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01FJC FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01GA6 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU00W8E-003.
-               CALL 'ZCU00W8E' USING DFHCOMMAREA
+       CALL-ZCU01MRV-003.
+               CALL 'ZCU01MRV' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU00W8E FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01MRV FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZCU01ULX-004.
+               CALL 'ZCU01ULX' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCU01ULX FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZCU01I1B-005.
+               CALL 'ZCU01I1B' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZCU01I1B FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

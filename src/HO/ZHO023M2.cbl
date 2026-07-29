@@ -86,18 +86,18 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
+                05 WS-T-MODEL          PIC X(12).
+                05 WS-T-TERM           PIC X(12).
+                05 WS-T-REG-NUMBER     PIC X(12).
                 05 WS-T-STATUS-CODE    PIC X(12).
-                05 WS-T-CC-RATING      PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
-                05 WS-T-PREMIUM        PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZHO01R9K              PIC X(8) VALUE 'ZHO01R9K'.
-       01  MOD-ZHO00S2W              PIC X(8) VALUE 'ZHO00S2W'.
+       01  MOD-ZHO01N2P              PIC X(8) VALUE 'ZHO01N2P'.
+       01  MOD-ZHO01GVR              PIC X(8) VALUE 'ZHO01GVR'.
 
       * Dynamically resolved module names
-       01  WS-SUBNAME-7              PIC X(8) VALUE SPACES.
+       01  WS-SUBNAME-5              PIC X(8) VALUE SPACES.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -112,9 +112,9 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZHO01LLE-001.
-               PERFORM CALL-ZHO01R9K-002.
-               PERFORM CALL-ZHO00S2W-003.
+               PERFORM CALL-ZHO01N2P-001.
+               PERFORM CALL-ZHO01GVR-002.
+               PERFORM CALL-ZFL00U29-003.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -127,28 +127,28 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZHO01LLE-001.
-               MOVE 'ZHO01LLE' TO WS-SUBNAME-7
-               CALL WS-SUBNAME-7 USING DFHCOMMAREA
+       CALL-ZHO01N2P-001.
+               CALL 'ZHO01N2P' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01LLE FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01N2P FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO01R9K-002.
-               CALL 'ZHO01R9K' USING DFHCOMMAREA
+       CALL-ZHO01GVR-002.
+               CALL 'ZHO01GVR' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO01R9K FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZHO01GVR FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZHO00S2W-003.
-               CALL 'ZHO00S2W' USING DFHCOMMAREA
+       CALL-ZFL00U29-003.
+               MOVE 'ZFL00U29' TO WS-SUBNAME-5
+               CALL WS-SUBNAME-5 USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZHO00S2W FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZFL00U29 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

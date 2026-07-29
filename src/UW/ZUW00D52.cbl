@@ -56,17 +56,19 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-AGENT-CODE     PIC X(12).
                 05 WS-T-CC-RATING      PIC X(12).
-                05 WS-T-SUM-ASSURED    PIC X(12).
+                05 WS-T-MANAGED-FUND   PIC X(12).
+                05 WS-T-TAX-BAND       PIC X(12).
+                05 WS-T-POSTCODE       PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZUW012I4              PIC X(8) VALUE 'ZUW012I4'.
-       01  MOD-ZUW013AG              PIC X(8) VALUE 'ZUW013AG'.
-       01  MOD-ZUW01STW              PIC X(8) VALUE 'ZUW01STW'.
-       01  MOD-ZCU0255O              PIC X(8) VALUE 'ZCU0255O'.
+       01  MOD-ZNT00R80              PIC X(8) VALUE 'ZNT00R80'.
+       01  MOD-ZUW0106L              PIC X(8) VALUE 'ZUW0106L'.
+       01  MOD-ZUW0173I              PIC X(8) VALUE 'ZUW0173I'.
+       01  MOD-ZRT019WH              PIC X(8) VALUE 'ZRT019WH'.
+       01  MOD-ZUW01NAJ              PIC X(8) VALUE 'ZUW01NAJ'.
+       01  MOD-ZUW01KZR              PIC X(8) VALUE 'ZUW01KZR'.
 
       ******************************************************************
       * L I N K A G E     S E C T I O N                                *
@@ -74,8 +76,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKUW0022.
-               COPY ZKUW0040.
+               COPY ZKUW0011.
+               COPY ZKUW0002.
+               COPY ZKUW0054.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -94,50 +97,71 @@
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZUW012I4-001.
-               PERFORM CALL-ZUW013AG-002.
-               PERFORM CALL-ZUW01STW-003.
-               PERFORM CALL-ZCU0255O-004.
+               PERFORM CALL-ZNT00R80-001.
+               PERFORM CALL-ZUW0106L-002.
+               PERFORM CALL-ZUW0173I-003.
+               PERFORM CALL-ZRT019WH-004.
+               PERFORM CALL-ZUW01NAJ-005.
+               PERFORM CALL-ZUW01KZR-006.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZUW012I4-001.
-               EXEC CICS LINK PROGRAM('ZUW012I4')
+       CALL-ZNT00R80-001.
+               EXEC CICS LINK PROGRAM('ZNT00R80')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW012I4 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZNT00R80 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW013AG-002.
-               EXEC CICS LINK PROGRAM('ZUW013AG')
+       CALL-ZUW0106L-002.
+               EXEC CICS LINK PROGRAM('ZUW0106L')
                          COMMAREA(DFHCOMMAREA)
                          LENGTH(WS-CALEN)
                          RESP(WS-RESP)
                END-EXEC.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW013AG FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW0106L FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZUW01STW-003.
-               CALL 'ZUW01STW' USING DFHCOMMAREA
+       CALL-ZUW0173I-003.
+               EXEC CICS LINK PROGRAM('ZUW0173I')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZUW0173I FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZRT019WH-004.
+               EXEC CICS LINK PROGRAM('ZRT019WH')
+                         COMMAREA(DFHCOMMAREA)
+                         LENGTH(WS-CALEN)
+                         RESP(WS-RESP)
+               END-EXEC.
+               IF WS-RESP NOT = DFHRESP(NORMAL)
+                  MOVE ' LINK ZRT019WH FAILED' TO EM-VARIABLE
+                  PERFORM WRITE-ERROR-MESSAGE
+               END-IF.
+      *----------------------------------------------------------------*
+       CALL-ZUW01NAJ-005.
+               CALL 'ZUW01NAJ' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZUW01STW FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01NAJ FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU0255O-004.
-               EXEC CICS LINK PROGRAM('ZCU0255O')
-                         COMMAREA(DFHCOMMAREA)
-                         LENGTH(WS-CALEN)
-                         RESP(WS-RESP)
-               END-EXEC.
+       CALL-ZUW01KZR-006.
+               CALL 'ZUW01KZR' USING DFHCOMMAREA
+                         WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU0255O FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZUW01KZR FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

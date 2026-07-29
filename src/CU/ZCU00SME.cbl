@@ -56,15 +56,15 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-MODEL          PIC X(12).
-                05 WS-T-HOUSE-TYPE     PIC X(12).
-                05 WS-T-BROKER-ID      PIC X(12).
                 05 WS-T-AGENT-CODE     PIC X(12).
+                05 WS-T-BEDROOMS       PIC X(12).
+                05 WS-T-BROKER-ID      PIC X(12).
+                05 WS-T-EXCESS         PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZCU01P9Y              PIC X(8) VALUE 'ZCU01P9Y'.
-       01  MOD-ZCU01RO2              PIC X(8) VALUE 'ZCU01RO2'.
+       01  MOD-ZCU01M01              PIC X(8) VALUE 'ZCU01M01'.
+       01  MOD-ZCU01FEY              PIC X(8) VALUE 'ZCU01FEY'.
 
       * SQL communication area
            EXEC SQL INCLUDE SQLCA END-EXEC.
@@ -84,7 +84,9 @@
        LINKAGE SECTION.
        01  DFHCOMMAREA.
                COPY ZKCOMMON.
-               COPY ZKCU0057.
+               COPY ZKCU0023.
+               COPY ZKCU0032.
+               COPY ZKCU0056.
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
@@ -98,28 +100,28 @@
                IF EIBCALEN IS EQUAL TO ZERO
                   MOVE ' NO COMMAREA RECEIVED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
-                  EXEC CICS ABEND ABCODE('LGTS')
+                  EXEC CICS ABEND ABCODE('LGSQ')
                             NODUMP END-EXEC
                END-IF.
                MOVE EIBCALEN TO WS-CALEN.
                SET WS-ADDR-COMMAREA TO ADDRESS OF DFHCOMMAREA.
-               PERFORM CALL-ZCU01P9Y-001.
-               PERFORM CALL-ZCU01RO2-002.
+               PERFORM CALL-ZCU01M01-001.
+               PERFORM CALL-ZCU01FEY-002.
                EXEC CICS RETURN END-EXEC.
       *----------------------------------------------------------------*
-       CALL-ZCU01P9Y-001.
-               CALL 'ZCU01P9Y' USING DFHCOMMAREA
+       CALL-ZCU01M01-001.
+               CALL 'ZCU01M01' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01P9Y FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01M01 FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZCU01RO2-002.
-               CALL 'ZCU01RO2' USING DFHCOMMAREA
+       CALL-ZCU01FEY-002.
+               CALL 'ZCU01FEY' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZCU01RO2 FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZCU01FEY FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*

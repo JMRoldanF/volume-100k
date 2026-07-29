@@ -86,18 +86,17 @@
              03 WS-TABLE-COUNT         PIC S9(4) COMP VALUE +0.
              03 WS-TABLE-ENTRY OCCURS 1 TO 250 TIMES
                         DEPENDING ON WS-TABLE-COUNT.
-                05 WS-T-NCD-YEARS      PIC X(12).
+                05 WS-T-CC-RATING      PIC X(12).
                 05 WS-T-POSTCODE       PIC X(12).
-                05 WS-T-ROOF-TYPE      PIC X(12).
+                05 WS-T-MODEL          PIC X(12).
                 05 WS-T-HOUSE-TYPE     PIC X(12).
                 05 WS-T-AMOUNT           PIC S9(7)V99 COMP-3.
 
       * Called module names
-       01  MOD-ZMT01UZZ              PIC X(8) VALUE 'ZMT01UZZ'.
-       01  MOD-ZMT01TEH              PIC X(8) VALUE 'ZMT01TEH'.
-       01  MOD-ZPA01HXX              PIC X(8) VALUE 'ZPA01HXX'.
-       01  MOD-ZMT01RIF              PIC X(8) VALUE 'ZMT01RIF'.
-       01  MOD-ZMT01MNZ              PIC X(8) VALUE 'ZMT01MNZ'.
+       01  MOD-ZMT01P0S              PIC X(8) VALUE 'ZMT01P0S'.
+       01  MOD-ZMT01CXI              PIC X(8) VALUE 'ZMT01CXI'.
+       01  MOD-ZMT01Q1W              PIC X(8) VALUE 'ZMT01Q1W'.
+       01  MOD-ZMT01PSD              PIC X(8) VALUE 'ZMT01PSD'.
 
        01  WS-FILE-STATUS            PIC X(2) VALUE SPACES.
        01  WS-EOF-FLAG               PIC X    VALUE 'N'.
@@ -112,12 +111,11 @@
                OPEN INPUT  INPUT-FILE.
                OPEN OUTPUT OUTPUT-FILE.
                OPEN OUTPUT REPORT-FILE.
-               PERFORM CALL-ZMT01UZZ-001.
-               PERFORM CALL-ZMT01TEH-002.
-               PERFORM CALL-ZPA01HXX-003.
-               PERFORM CALL-ZMT01RIF-004.
-               PERFORM CALL-ZMT01MNZ-005.
-               PERFORM AUDIT-BROKER-ID-0001.
+               PERFORM CALL-ZMT01P0S-001.
+               PERFORM CALL-ZMT01CXI-002.
+               PERFORM CALL-ZMT01Q1W-003.
+               PERFORM CALL-ZMT01PSD-004.
+               PERFORM EXPAND-EQUITIES-0001.
                PERFORM UNTIL WS-EOF
                   READ INPUT-FILE
                        AT END MOVE 'Y' TO WS-EOF-FLAG
@@ -130,57 +128,45 @@
                CLOSE INPUT-FILE OUTPUT-FILE REPORT-FILE.
                GOBACK.
       *----------------------------------------------------------------*
-       CALL-ZMT01UZZ-001.
-               CALL 'ZMT01UZZ' USING DFHCOMMAREA
+       CALL-ZMT01P0S-001.
+               CALL 'ZMT01P0S' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01UZZ FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01P0S FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01TEH-002.
-               CALL 'ZMT01TEH' USING DFHCOMMAREA
+       CALL-ZMT01CXI-002.
+               CALL 'ZMT01CXI' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01TEH FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01CXI FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZPA01HXX-003.
-               CALL 'ZPA01HXX' USING DFHCOMMAREA
+       CALL-ZMT01Q1W-003.
+               CALL 'ZMT01Q1W' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZPA01HXX FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01Q1W FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01RIF-004.
-               CALL 'ZMT01RIF' USING DFHCOMMAREA
+       CALL-ZMT01PSD-004.
+               CALL 'ZMT01PSD' USING DFHCOMMAREA
                          WS-STATUS-CODE.
                IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01RIF FAILED' TO EM-VARIABLE
+                  MOVE ' LINK ZMT01PSD FAILED' TO EM-VARIABLE
                   PERFORM WRITE-ERROR-MESSAGE
                END-IF.
       *----------------------------------------------------------------*
-       CALL-ZMT01MNZ-005.
-               CALL 'ZMT01MNZ' USING DFHCOMMAREA
-                         WS-STATUS-CODE.
-               IF WS-RESP NOT = DFHRESP(NORMAL)
-                  MOVE ' LINK ZMT01MNZ FAILED' TO EM-VARIABLE
-                  PERFORM WRITE-ERROR-MESSAGE
-               END-IF.
-      *----------------------------------------------------------------*
-       AUDIT-BROKER-ID-0001.
-               EVALUATE TRUE
-                  WHEN WS-PREMIUM-TOTAL < 999
-                       MOVE 1 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 4999
-                       MOVE 2 TO WS-PREMIUM-BAND
-                  WHEN WS-PREMIUM-TOTAL < 24999
-                       MOVE 3 TO WS-PREMIUM-BAND
-                  WHEN OTHER
-                       MOVE 9 TO WS-PREMIUM-BAND
-               END-EVALUATE.
+       EXPAND-EQUITIES-0001.
+               EXEC CICS ASKTIME ABSTIME(ABS-TIME)
+               END-EXEC.
+               EXEC CICS FORMATTIME ABSTIME(ABS-TIME)
+                         MMDDYYYY(DATE1)
+                         TIME(TIME1)
+               END-EXEC.
       *----------------------------------------------------------------*
        WRITE-ERROR-MESSAGE.
                EXEC CICS ASKTIME ABSTIME(ABS-TIME) END-EXEC.
