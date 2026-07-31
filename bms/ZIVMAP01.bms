@@ -1,12 +1,17 @@
-ZIVMAP01 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               X
-               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES
+*********************************************************************** 00000010
+* ZIVMAP01 -- generated volume-test mapset
+*********************************************************************** 00000030
+ZIVMAP01 TITLE 'ZIVMAP01 SCREEN LAYOUT'
+ZIVMAP01 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               -
+               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES                      00000060
+         EJECT                                                          00000070
 ZIVMAP0I DFHMDI SIZE=(24,80)
-         DFHMDF POS=(1,1),LENGTH=20,ATTRB=(PROT),                      X
-               INITIAL='GENERATED VOLUME TEST'
+         DFHMDF POS=(1,1),LENGTH=60,ATTRB=(PROT),INITIAL='CUSTOMER POLI-
+                GENAPP VOLUME TEST'
 HDRTTL   DFHMDF POS=(3,1),LENGTH=40,ATTRB=(PROT)
 CUSTNO   DFHMDF POS=(5,20),LENGTH=10,ATTRB=(UNPROT,IC)
-POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)
+POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)                     00000130
 PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)
 ERRMSG   DFHMDF POS=(23,1),LENGTH=70,ATTRB=(PROT,BRT)
-         DFHMSD TYPE=FINAL
-         END
+ZIVMAP01 DFHMSD TYPE=FINAL
+         END                                                            00000170

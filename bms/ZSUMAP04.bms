@@ -1,12 +1,17 @@
-ZSUMAP04 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               X
-               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES
-ZSUMAP0I DFHMDI SIZE=(24,80)
-         DFHMDF POS=(1,1),LENGTH=20,ATTRB=(PROT),                      X
-               INITIAL='GENERATED VOLUME TEST'
-HDRTTL   DFHMDF POS=(3,1),LENGTH=40,ATTRB=(PROT)
+*********************************************************************** 00000010
+* ZSUMAP04 -- generated volume-test mapset                              00000020
+*********************************************************************** 00000030
+ZSUMAP04 TITLE 'ZSUMAP04 SCREEN LAYOUT'
+         PRINT NOGEN                                                    00000050
+ZSUMAP04 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               X00000060
+               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES                      00000070
+ZSUMAP0I DFHMDI SIZE=(24,80)                                            00000080
+         DFHMDF POS=(1,1),LENGTH=60,ATTRB=(PROT),INITIAL='GENERATED VOLX
+               UME TEST'                                                00000100
+HDRTTL   DFHMDF POS=(3,1),LENGTH=40,ATTRB=(PROT)                        00000110
 CUSTNO   DFHMDF POS=(5,20),LENGTH=10,ATTRB=(UNPROT,IC)
 POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)
 PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)
 ERRMSG   DFHMDF POS=(23,1),LENGTH=70,ATTRB=(PROT,BRT)
-         DFHMSD TYPE=FINAL
+         DFHMSD TYPE=FINAL                                              00000160
          END

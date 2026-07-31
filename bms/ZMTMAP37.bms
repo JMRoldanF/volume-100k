@@ -1,12 +1,16 @@
-ZMTMAP37 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               X
-               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES
-ZMTMAP3I DFHMDI SIZE=(24,80)
-         DFHMDF POS=(1,1),LENGTH=20,ATTRB=(PROT),                      X
-               INITIAL='GENERATED VOLUME TEST'
+***********************************************************************
+* ZMTMAP37 -- generated volume-test mapset                              00000020
+*********************************************************************** 00000030
+ZMTMAP37 TITLE 'ZMTMAP37 SCREEN LAYOUT'
+ZMTMAP37 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),  map header   *
+               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES                      00000060
+ZMTMAP3I DFHMDI SIZE=(24,80)                                            00000070
+         DFHMDF POS=(1,1),LENGTH=60,ATTRB=(PROT),INITIAL='CUSTOMER POLI*00000080
+               CY ENQUIRY -- ALL AMOUNTS IN GBP'                        00000090
 HDRTTL   DFHMDF POS=(3,1),LENGTH=40,ATTRB=(PROT)
 CUSTNO   DFHMDF POS=(5,20),LENGTH=10,ATTRB=(UNPROT,IC)
-POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)
-PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)
+POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)     policy number   00000120
+PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)                      00000130
 ERRMSG   DFHMDF POS=(23,1),LENGTH=70,ATTRB=(PROT,BRT)
-         DFHMSD TYPE=FINAL
-         END
+ZMTMAP37 DFHMSD TYPE=FINAL                                              00000150
+         END                                                            00000160

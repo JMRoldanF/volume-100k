@@ -1,12 +1,17 @@
-ZTYMAP01 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               X
+*********************************************************************** 00000010
+* ZTYMAP01 -- generated volume-test mapset                              00000020
+***********************************************************************
+         PRINT NOGEN                                                    00000040
+ZTYMAP01 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               X00000050
                LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES
+         SPACE 2
 ZTYMAP0I DFHMDI SIZE=(24,80)
-         DFHMDF POS=(1,1),LENGTH=20,ATTRB=(PROT),                      X
-               INITIAL='GENERATED VOLUME TEST'
-HDRTTL   DFHMDF POS=(3,1),LENGTH=40,ATTRB=(PROT)
+         DFHMDF POS=(1,1),LENGTH=60,ATTRB=(PROT),INITIAL='Press PF9 forX00000090
+                the previous screen, PF3 to exit'                       00000100
+HDRTTL   DFHMDF POS=(3,1),LENGTH=40,ATTRB=(PROT)                        00000110
 CUSTNO   DFHMDF POS=(5,20),LENGTH=10,ATTRB=(UNPROT,IC)
 POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)
-PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)
-ERRMSG   DFHMDF POS=(23,1),LENGTH=70,ATTRB=(PROT,BRT)
-         DFHMSD TYPE=FINAL
+PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)                      00000140
+ERRMSG   DFHMDF POS=(23,1),LENGTH=70,ATTRB=(PROT,BRT)   error line
+         DFHMSD TYPE=FINAL                                              00000160
          END

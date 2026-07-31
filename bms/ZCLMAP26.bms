@@ -1,12 +1,18 @@
-ZCLMAP26 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),               X
-               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES
-ZCLMAP2I DFHMDI SIZE=(24,80)
-         DFHMDF POS=(1,1),LENGTH=20,ATTRB=(PROT),                      X
-               INITIAL='GENERATED VOLUME TEST'
+***********************************************************************
+* ZCLMAP26 -- generated volume-test mapset
+***********************************************************************
+ZCLMAP26 TITLE 'ZCLMAP26 SCREEN LAYOUT'                                 00000040
+         PRINT NOGEN                                                    00000050
+ZCLMAP26 DFHMSD TYPE=MAP,MODE=INOUT,CTRL=(FREEKB,FRSET),  map header   X00000060
+               LANG=COBOL,STORAGE=AUTO,TIOAPFX=YES                      00000070
+ZCLMAP2I DFHMDI SIZE=(24,80)                                            00000080
+         DFHMDF POS=(1,1),LENGTH=60,ATTRB=(PROT),INITIAL='BROKER ENQUIRX00000090
+                                    PF3 Exit'
 HDRTTL   DFHMDF POS=(3,1),LENGTH=40,ATTRB=(PROT)
 CUSTNO   DFHMDF POS=(5,20),LENGTH=10,ATTRB=(UNPROT,IC)
-POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)
-PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)
+POLNO    DFHMDF POS=(6,20),LENGTH=10,ATTRB=(UNPROT)     policy number   00000130
+
+PREMIUM  DFHMDF POS=(7,20),LENGTH=9,ATTRB=(UNPROT)                      00000150
 ERRMSG   DFHMDF POS=(23,1),LENGTH=70,ATTRB=(PROT,BRT)
          DFHMSD TYPE=FINAL
-         END
+         END                                                            00000180
