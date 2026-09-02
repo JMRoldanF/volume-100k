@@ -4,6 +4,7 @@
       *
       *  Generated volume-test source. Layer 2,
       *  type data_vsam, domain MARINE.
+      *  Second edit set: partial change for the carry-over test.
       ******************************************************************
        IDENTIFICATION DIVISION.
        PROGRAM-ID. ZMA0138S.

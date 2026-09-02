@@ -4,6 +4,7 @@
       *
       *  Generated volume-test source. Layer 2,
       *  type data_vsam, domain SCHEDUL.
+      *  Second edit set: partial change for the carry-over test.
       ******************************************************************
        IDENTIFICATION DIVISION.
        PROGRAM-ID. ZSC015BR.

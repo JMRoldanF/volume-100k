@@ -4,6 +4,7 @@
       *
       *  Generated volume-test source. Layer 2,
       *  type data_db2, domain AGENT.
+      *  Second edit set: partial change for the carry-over test.
       ******************************************************************
        IDENTIFICATION DIVISION.
        PROGRAM-ID. ZAG011N7.
