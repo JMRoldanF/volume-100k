@@ -82,6 +82,8 @@
       ******************************************************************
       * P R O C E D U R E S                                            *
       ******************************************************************
+      * Single-file edit: nothing COPYs this program, so the re-parse  *
+      * set cannot grow through its dependents.                        *
        PROCEDURE DIVISION.
       *----------------------------------------------------------------*
        MAINLINE SECTION.
