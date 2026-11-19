@@ -15,3 +15,4 @@
                   05 HEAL-TABLE OCCURS 12 TIMES.
                      07 TAB-MONTH             PIC 9(2).
                      07 TAB-AMOUNT            PIC S9(7)V99 COMP-3.
+      * NOM-2903 commit D
